@@ -5,7 +5,7 @@ const U = { w: null, viewer: 0, zoom: 64, cx: 8, cy: 5.5, W: 300, H: 300, vis: n
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const setup = { n: 2, mode: 'coop', shared: true, diff: 'medium', seed: Math.floor(Math.random() * 1e6) };
 // ---------- saving: the engine is deterministic, so a save is the setup plus the list of actions taken ----------
-const SAVE_KEY = 'ts_save', SAVE_V = 3;
+const SAVE_KEY = 'ts_save', SAVE_V = 4;
 function A(a) { const pid = U.viewer, r = act(U.w, pid, a); U.alog.push([pid, a]); saveSoon(); return r; } // failed actions can still change state (rng, hidden), so every call is logged
 let saveT = 0;
 function saveSoon() { clearTimeout(saveT); saveT = setTimeout(saveNow, 150); }

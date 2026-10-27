@@ -76,17 +76,16 @@ function tryGenerate(rng, n) {
   for (let y = by1 + 1; y <= by1 + 3; y++) for (let x = cx; x < cx + 4; x++) ct.push(set(x, y, 'court'));
   map.court = mkRoom('court', ct);
   for (const t of grid) if (t && t.type === 'yard') t.spots = rint(rng, 0, 1);
-  // corridors: spine plus spokes
-  const sr = rint(rng, by0 + 3, by1 - 3);
-  for (let x = bx0 + 1; x <= bx1 - 1; x++) set(x, sr, 'corridor');
-  set(bx0, sr, 'door'); set(bx1, sr, 'door');
-  const cols = [], nSp = rint(rng, 3, 4); let tries = 0;
-  while (cols.length < nSp && tries++ < 80) { const c = rint(rng, bx0 + 2, bx1 - 2); if (cols.every(o => Math.abs(o - c) >= 4)) cols.push(c); }
-  if (cols.length < 3) return null;
+  // corridors: two long halls plus 4 or 5 spokes, so there are loops to run around
+  const s1 = rint(rng, by0 + 2, by0 + 3), s2 = rint(rng, s1 + 4, by1 - 2), sRows = [s1, s2];
+  for (const sr of sRows) { for (let x = bx0 + 1; x <= bx1 - 1; x++) set(x, sr, 'corridor'); set(bx0, sr, 'door'); set(bx1, sr, 'door'); }
+  const cols = [], nSp = rint(rng, 4, 5); let tries = 0;
+  while (cols.length < nSp && tries++ < 120) { const c = rint(rng, bx0 + 2, bx1 - 2); if (cols.every(o => Math.abs(o - c) >= 3)) cols.push(c); }
+  if (cols.length < 4) return null;
   for (const c of cols) {
     let ya = by0, yb = by1;
     if (rng() < 0.35) { if (rng() < 0.5) ya += rint(rng, 1, 2); else yb -= rint(rng, 1, 2); }
-    for (let y = ya; y <= yb; y++) if (y !== sr) set(c, y, ((y === by0 || y === by1) && rng() < 0.7) ? 'door' : 'corridor');
+    for (let y = ya; y <= yb; y++) if (!sRows.includes(y)) set(c, y, ((y === by0 || y === by1) && rng() < 0.7) ? 'door' : 'corridor');
   }
   const isCorr = (x, y) => { const t = tileAt(map, x, y); return t && t.type === 'corridor'; };
   const free = (x, y) => inB(x, y) && !grid[y * W + x];
@@ -118,10 +117,17 @@ function tryGenerate(rng, n) {
     if (!cands.length) return null;
     const cells = pick(rng, cands); const tiles = cells.map(([x, y]) => set(x, y, type)); mkRoom(type, tiles);
   }
-  // a few spare cells
-  const spare = shuffle(rng, []); void spare;
-  const extra = []; for (let y = by0; y <= by1; y++) for (let x = bx0; x <= bx1; x++) if (free(x, y) && touchesCorr([[x, y]])) extra.push([x, y]);
-  shuffle(rng, extra).slice(0, 3).forEach(([x, y]) => { const t = set(x, y, 'cell'); mkRoom('cell', [t]); });
+  // fill every remaining tile: more cells, WCs and supply closets. Nothing in the building is a blank wall.
+  const lim = { wc: 5, closet: 4 }, cnt = { wc: 0, closet: 0 };
+  for (let pass = 0; pass < 3; pass++) {
+    const extra = []; for (let y = by0; y <= by1; y++) for (let x = bx0; x <= bx1; x++) if (free(x, y) && touchesCorr([[x, y]])) extra.push([x, y]);
+    for (const [x, y] of shuffle(rng, extra)) {
+      const r = rng(); let type = 'cell';
+      if (r < 0.3 && cnt.wc < lim.wc) type = 'wc'; else if (r < 0.5 && cnt.closet < lim.closet) type = 'closet';
+      if (type in cnt) cnt[type]++; const t = set(x, y, type); mkRoom(type, [t]);
+    }
+  }
+  for (let y = by0; y <= by1; y++) for (let x = bx0; x <= bx1; x++) if (free(x, y)) set(x, y, 'corridor'); // pockets nobody can reach become short hallways
   // gate: a border fence tile with a yard neighbour
   const gcs = [];
   for (const t of grid) if (t && t.type === 'fence') {

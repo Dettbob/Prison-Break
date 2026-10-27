@@ -51,3 +51,8 @@ console.log(fails?('FAILS '+fails):'ALL OK');
     ok(d==='easy'?p.strikes===0&&G.cellOf(w,p).tiles[0].x===p.x:p.strikes===1,d+': night catch -> strikes='+p.strikes); }
   const e2=cnt('easy'),p2=e2.players[0]; e2.round=1+24; const g2=e2.guards[2]; const c2=e2.map.court.tiles[0]; p2.x=c2.x;p2.y=c2.y; g2.x=c2.x;g2.y=c2.y; G.markSuspect(e2,g2,p2,'danger','attacked a guard'); g2.state='hunt';g2.target=0;g2.ap=2; e2.phase='guards'; G.runGuardPhase(e2); ok(p2.strikes===1,'easy: violence still a strike'); }
 console.log(fails?('FAILS '+fails):'ALL OK');
+// inmates sleep in their own cells at night
+{ const w=G.newWorld({seed:21,players:2,mode:'coop'}); let bad=0,seen=0; for(let i=0;i<80&&!w.over;i++){ for(const p of w.players){ if(w.phase==='players'&&w.cur===p.id) G.act(w,p.id,{t:'end'}); }
+    if(G.timeOf(w).phase==='night'&&G.timeOf(w).left<G.timeOf(w).len-1) for(const n of w.npcs) if(n.role==='inmate'&&!n.hostile){ seen++; if(n.x!==n.home.x||n.y!==n.home.y) bad++; } }
+  ok(seen>0&&bad===0,'at night all inmates are in their cells ('+seen+' checks)'); }
+console.log(fails?('FAILS '+fails):'ALL OK');

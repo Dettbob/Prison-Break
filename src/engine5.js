@@ -27,7 +27,7 @@ function spawnNpcs(w) {
 function npcTarget(w, n) {
   const t = timeOf(w);
   if (n.role !== 'inmate') return n.home;
-  if (t.phase === 'night' || n.stay === t.phase) return n.home;
+  if (t.phase === 'night' || n.stay === t.phase || (t.phase === 'evening' && t.left <= 3)) return n.home; // lights out: everyone is back in their own cell
   const r = mulberry32((w.seed ^ (t.wi * 31337) ^ (t.pi * 7919) ^ (n.id * 104729)) >>> 0);
   let types;
   if (t.phase === 'morning') types = ['dining', 'showers', 'common'];
@@ -112,6 +112,7 @@ function npcPhase(w) {
       } else if (!w.brawls.some(b => b.rid === c.rid && b.left > 0)) c.ended = true;
       continue;
     }
+    if (night) { n.x = n.home.x; n.y = n.home.y; continue; } // at night every inmate sleeps in his cell
     const goal = npcTarget(w, n);
     for (let i = 0; i < 2 && !(n.x === goal.x && n.y === goal.y); i++) npcStep(w, n, goal.x, goal.y);
   }

@@ -11,7 +11,7 @@ const CFG = {
   ],
   DAYS: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
   CAMERA_RANGE: 2, HACK_TURNS: 8, POWER_TURNS: 6,
-  GUARDS: 6, GUARDS_NIGHT: 4, NPCS: 8,
+  GUARDS: 6, GUARDS_NIGHT: 4, NPCS: 10,
   METH: { high: 7, crash: 15 },
   NIGHT_WARN: 5, ROUTE_PRICE: 22, INTEL_PRICE: 4,
 };
@@ -34,6 +34,8 @@ const ROOMS = {
   workshop:  { name: 'Workshop',        size: [2, 1], allowed: true,  cover: 'mid',  lit: true,  spots: [2, 3], loot: 'workshop', work: true, salvage: true },
   laundry:   { name: 'Laundry',         size: [1, 2], allowed: true,  cover: 'mid',  lit: true,  spots: [1, 2], loot: 'laundry', work: true, salvage: true },
   kitchen:   { name: 'Kitchen',         size: [1, 2], allowed: true,  cover: 'mid',  lit: true,  spots: [2, 2], loot: 'kitchen', work: true, salvage: true, link: 'dining' },
+  wc:        { name: 'WC',              size: [1, 1], allowed: true,  cover: 'room', lit: true,  spots: [0, 1], loot: 'wc', routine: 'wc' },
+  closet:    { name: 'Supply Closet',   size: [1, 1], allowed: true,  cover: 'room', lit: false, spots: [1, 2], loot: 'closet', salvage: true },
   infirmary: { name: 'Infirmary',       size: [1, 2], allowed: true,  cover: 'room', lit: true,  spots: [1, 2], loot: 'infirmary' },
   visitor:   { name: 'Visitor Room',    size: [1, 1], allowed: true,  cover: 'room', lit: true,  spots: [0, 1], loot: 'common' },
   storage:   { name: 'Storage',         size: [1, 1], allowed: false, cover: 'room', lit: false, spots: [2, 3], loot: 'storage', salvage: true, locked: true, alarm: true },
@@ -83,6 +85,8 @@ const RECIPES = [
 ];
 
 const LOOT = {
+  wc:        [['cigs', 2, 1], ['scrap', 1, 1], ['pills', 1, 1], ['', 3, 0]],
+  closet:    [['scrap', 5, [1, 2]], ['cigs', 2, 1], ['dummy', 0.6, 1], ['uniform', 0.5, 1], ['', 2, 0]],
   cell:      [['cigs', 4, [1, 3]], ['scrap', 3, 1], ['pills', 1, 1], ['phone', 0.6, 1], ['meth', 0.6, 1], ['', 3, 0]],
   common:    [['cigs', 4, [1, 3]], ['scrap', 2, 1], ['pills', 1, 1], ['watch', 0.5, 1], ['', 3, 0]],
   yard:      [['scrap', 4, 1], ['cigs', 2, 1], ['', 4, 0]],

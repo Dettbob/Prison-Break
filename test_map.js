@@ -19,5 +19,5 @@ for(let s=1;s<=300;s++) for(const n of [1,2,3,4]){
 }
 console.log('fail',fail,'avg tiles',(counts.reduce((a,b)=>a+b,0)/counts.length).toFixed(0),'max cell spread',Math.max(...spread),'avg spread',(spread.reduce((a,b)=>a+b,0)/spread.length).toFixed(1),'ms',Date.now()-t0);
 const m=generateMap(mulberry32(42),4);
-const ch={fence:'#',yard:'.',court:'o',corridor:'=',door:'D',gate:'G',cell:'c',solitary:'S',common:'C',dining:'d',showers:'s',library:'L',workshop:'w',laundry:'l',kitchen:'k',infirmary:'i',visitor:'v',storage:'t',armory:'A',guardroom:'g',warden:'W',control:'X',electrical:'E'};
+const ch={fence:'#',yard:'.',court:'o',corridor:'=',door:'D',gate:'G',cell:'c',solitary:'S',common:'C',dining:'d',showers:'s',library:'L',workshop:'w',laundry:'l',kitchen:'k',infirmary:'i',visitor:'v',storage:'t',armory:'A',guardroom:'g',warden:'W',control:'X',electrical:'E',wc:'+',closet:'u'};
 for(let y=0;y<m.H;y++){let r='';for(let x=0;x<m.W;x++){const t=m.grid[y*m.W+x];r+=t?(ch[t.type]||'?'):' ';}console.log(r);}
