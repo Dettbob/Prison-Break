@@ -1,0 +1,2421 @@
+<title>Three Strikes</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Display:wght@700;900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: full-screen tactical console. Map stage left/top, command panel right/bottom.
+   Palette: concrete blue-black, sodium amber for light and interaction, signal red for danger. */
+:root {
+  --bg: #0e1114; --panel: #151a1f; --panel2: #1d242b; --line: #2b343d; --fg: #d9dee3; --muted: #8693a0;
+  --amber: #f2b441; --alert: #e5484d; --ok: #5fb878; --steel: #6b86c9;
+  --display: "Big Shoulders Stencil Display", Impact, "Arial Narrow Bold", sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 var(--body);
+  padding-block: 0; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); box-sizing: border-box; overflow: hidden; }
+* { box-sizing: border-box; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.lbl { font: 600 10.5px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.muted { color: var(--muted); } .pad { padding: 12px 2px; }
+#app { height: 100%; position: relative; }
+[hidden] { display: none !important; }
+
+/* ---------- setup ---------- */
+#setup { height: 100%; overflow-y: auto; padding: 28px 0 40px; }
+.setup-inner { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+h1 { font: 900 clamp(48px, 13vw, 88px)/.88 var(--display); letter-spacing: .02em; margin: 4px 0 0; color: var(--fg); text-wrap: balance; }
+h1 span { color: var(--alert); }
+.tagline { margin: 0; color: var(--muted); max-width: 44ch; font-size: 15px; }
+.grp { display: flex; flex-direction: column; gap: 8px; }
+.segs { display: flex; gap: 6px; flex-wrap: wrap; }
+.seg { background: var(--panel); border: 1px solid var(--line); padding: 10px 18px; min-height: 44px; border-radius: 4px; font-weight: 600; }
+.seg.on { background: var(--amber); color: #15110a; border-color: var(--amber); }
+.name { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.name .dot { width: 14px; height: 14px; border-radius: 50%; flex: none; }
+input[type=text], input:not([type]), input[inputmode] { background: var(--panel); border: 1px solid var(--line); color: var(--fg); padding: 10px 12px; min-height: 44px; border-radius: 4px; font: 500 14px var(--mono); width: 100%; min-width: 0; }
+.seedrow { display: flex; gap: 8px; }
+.check { display: flex; gap: 10px; align-items: center; min-height: 36px; }
+.check input { width: 20px; height: 20px; accent-color: var(--amber); }
+.primary { background: var(--amber); color: #15110a; border: 0; border-radius: 4px; padding: 12px 18px; font: 700 15px var(--body); min-height: 48px; letter-spacing: .02em; }
+.primary:disabled { background: var(--panel2); color: var(--muted); cursor: default; }
+.primary.big { font-size: 17px; min-height: 54px; }
+.ghost { background: transparent; border: 1px solid var(--line); border-radius: 4px; padding: 10px 14px; min-height: 44px; color: var(--fg); }
+#how { background: var(--panel); border: 1px solid var(--line); padding: 16px; border-radius: 4px; font-size: 13.5px; }
+#how h3 { font: 700 13px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--amber); margin: 14px 0 4px; } #how h3:first-child { margin-top: 0; }
+#how p, #how ul { margin: 0 0 6px; } #how ul { padding-left: 18px; } #how li { margin-bottom: 3px; }
+
+/* ---------- game ---------- */
+#game { height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr) minmax(0, 46%); position: relative; gap: 0; }
+#hud-top { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.brand { font: 900 22px/1 var(--display); letter-spacing: .06em; margin-right: auto; }
+.brand b { color: var(--alert); font-weight: 900; }
+#round { font: 600 12px var(--mono); color: var(--muted); letter-spacing: .08em; text-transform: uppercase; }
+.chip { display: inline-flex; gap: 6px; align-items: baseline; padding: 4px 9px; border-radius: 3px; font: 600 12px var(--mono); background: var(--panel2); border: 1px solid var(--line); }
+.chip small { color: var(--muted); font-size: 10.5px; }
+.chip.day { color: var(--amber); } .chip.night { color: var(--steel); } .chip.dim { color: var(--muted); margin-left: 6px; }
+#alert { display: flex; align-items: center; gap: 5px; }
+.pip { width: 14px; height: 8px; background: var(--panel2); border: 1px solid var(--line); border-radius: 1px; } .pip.hot { background: var(--alert); border-color: var(--alert); }
+#stage { position: relative; min-height: 0; background: radial-gradient(ellipse at 50% 40%, #151b21 0%, #0b0e11 80%); overflow: hidden; touch-action: none; }
+#cv { display: block; touch-action: none; cursor: grab; }
+#zoom { position: absolute; right: 8px; top: 8px; display: flex; flex-direction: column; gap: 6px; }
+#zoom button { width: 40px; height: 40px; background: rgba(21,26,31,.9); border: 1px solid var(--line); border-radius: 4px; font: 700 18px var(--mono); }
+#toast { position: absolute; left: 50%; top: 10px; transform: translate(-50%, -8px); max-width: min(92%, 480px); padding: 9px 14px; border-radius: 4px; background: rgba(21,26,31,.96); border: 1px solid var(--line); font-size: 13.5px; opacity: 0; pointer-events: none; transition: opacity .18s, transform .18s; text-align: center; z-index: 5; }
+#toast.show { opacity: 1; transform: translate(-50%, 0); } #toast.bad { border-color: var(--alert); } #toast.ok { border-color: var(--amber); }
+#movemenu { position: absolute; width: 180px; background: rgba(21,26,31,.97); border: 1px solid var(--amber); border-radius: 4px; padding: 10px; z-index: 6; }
+#movemenu .mrow { display: flex; gap: 6px; margin-top: 8px; } #movemenu button { flex: 1; min-height: 44px; background: var(--panel2); border: 1px solid var(--line); border-radius: 4px; font-weight: 600; }
+#movemenu button:not(:disabled):hover { border-color: var(--amber); } #movemenu button:disabled { opacity: .4; } #movemenu small { display: block; color: var(--muted); font: 500 10.5px var(--mono); }
+#movemenu p { margin: 6px 0 0; font-size: 12.5px; }
+.tag { display: inline-block; font: 600 10.5px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; padding: 3px 6px; border-radius: 2px; background: var(--panel2); border: 1px solid var(--line); color: var(--muted); vertical-align: middle; }
+.tag.bad { color: var(--alert); border-color: rgba(229,72,77,.5); } .tag.good { color: var(--ok); border-color: rgba(95,184,120,.45); }
+
+#panel { display: flex; flex-direction: column; min-height: 0; background: var(--panel); border-top: 1px solid var(--line); margin: 0 calc(-1 * max(16px, env(safe-area-inset-right, 0px))) 0 calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+  padding: 0 max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); }
+#panel-body { flex: 1; min-height: 0; overflow-y: auto; padding: 10px 0; }
+#panel-foot { padding: 8px 0 10px; border-top: 1px solid var(--line); }
+#endturn { width: 100%; }
+.roster { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.rchip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border: 1px solid var(--line); border-radius: 3px; font: 600 12px var(--mono); color: var(--muted); }
+.rchip i { width: 9px; height: 9px; border-radius: 50%; background: var(--c); } .rchip.on { color: var(--fg); border-color: var(--c); } .rchip.out { opacity: .45; }
+.card { background: var(--panel2); border: 1px solid var(--line); border-radius: 4px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.cardhead { display: flex; justify-content: space-between; align-items: baseline; } .cardhead b { font: 900 22px/1 var(--display); letter-spacing: .05em; text-transform: uppercase; }
+.cigs { font: 600 14px var(--mono); } .cigs u { text-decoration: none; display: inline-grid; place-items: center; width: 18px; height: 18px; background: var(--amber); color: #15110a; border-radius: 50%; font-size: 11px; margin-right: 4px; }
+.stats { display: flex; gap: 18px; flex-wrap: wrap; } .stats > div { display: flex; align-items: center; gap: 6px; } .stats .lbl { margin-right: 2px; }
+.seg2 { width: 9px; height: 14px; background: #2a3138; border-radius: 1px; } .seg2.hp { background: var(--ok); }
+.ap { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--amber); } .ap.on { background: var(--amber); }
+.strike { width: 14px; height: 14px; transform: rotate(45deg); border: 2px solid #55303a; } .strike.on { background: var(--alert); border-color: var(--alert); }
+.where { font-size: 13px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.warn { margin-top: 8px; padding: 8px 10px; border: 1px solid var(--alert); background: rgba(229,72,77,.12); border-radius: 4px; font-weight: 600; font-size: 13px; }
+.warn.soft { border-color: var(--amber); background: rgba(242,180,65,.1); }
+.tabs { display: flex; gap: 4px; margin: 10px 0 8px; border-bottom: 1px solid var(--line); }
+.tab { background: none; border: 0; border-bottom: 2px solid transparent; padding: 8px 12px; min-height: 40px; color: var(--muted); font-weight: 600; } .tab.on { color: var(--fg); border-color: var(--amber); }
+.hint { margin: 0 0 8px; font-size: 12.5px; color: var(--muted); }
+.acts { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.act { position: relative; text-align: left; padding: 9px 44px 9px 10px; min-height: 46px; background: var(--panel2); border: 1px solid var(--line); border-radius: 4px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.act:not(.off):hover { border-color: var(--amber); } .act .al { font-weight: 600; font-size: 13.5px; overflow-wrap: anywhere; } .act small { color: var(--muted); font-size: 11.5px; overflow-wrap: anywhere; }
+.act .ap-b { position: absolute; right: 8px; top: 8px; font: 600 10.5px var(--mono); color: var(--amber); border: 1px solid rgba(242,180,65,.4); border-radius: 2px; padding: 2px 4px; }
+.act.off { opacity: .5; }
+.pack { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.item { display: inline-flex; align-items: center; gap: 7px; padding: 6px 9px; background: var(--panel2); border: 1px solid var(--line); border-radius: 3px; font-size: 13px; } .item b { font: 700 12px var(--mono); color: var(--amber); width: 16px; text-align: center; } .item em { font: 600 12px var(--mono); color: var(--muted); font-style: normal; }
+.seltile { margin-top: 8px; padding: 8px; border: 1px dashed var(--line); border-radius: 4px; }
+.log p { margin: 0 0 6px; font-size: 13px; } .log em { font: 600 10.5px var(--mono); color: var(--muted); font-style: normal; margin-right: 6px; }
+.l-alert { color: #f0a0a3; } .l-strike { color: var(--alert); font-weight: 600; } .l-escape { color: var(--ok); font-weight: 600; } .l-you { color: var(--fg); } .l-info { color: var(--muted); }
+
+#cover { position: absolute; inset: 0; background: #090b0d; display: grid; place-items: center; z-index: 8; }
+.coverbox { text-align: center; padding: 20px; display: flex; flex-direction: column; gap: 12px; align-items: center; }
+.coverbox h2 { font: 900 clamp(40px, 10vw, 72px)/1 var(--display); margin: 0; letter-spacing: .04em; text-transform: uppercase; }
+#modal { position: absolute; inset: 0; background: rgba(5,7,9,.72); display: flex; align-items: flex-end; justify-content: center; z-index: 9; }
+.msheet { width: min(560px, 100%); max-height: 86%; overflow-y: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 6px 6px 0 0; padding: 14px; display: flex; flex-direction: column; gap: 6px; }
+.mhead { display: flex; justify-content: space-between; align-items: baseline; } .mhead b { font: 900 22px var(--display); letter-spacing: .05em; text-transform: uppercase; }
+.msheet h4 { margin: 8px 0 2px; font: 600 10.5px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.row { display: flex; justify-content: space-between; gap: 12px; align-items: center; text-align: left; padding: 9px 10px; min-height: 44px; background: var(--panel2); border: 1px solid var(--line); border-radius: 4px; }
+.row small { display: block; color: var(--muted); font-size: 11.5px; } .row b { font: 600 13px var(--mono); color: var(--amber); white-space: nowrap; } .row:disabled { opacity: .45; } .row:not(:disabled):hover { border-color: var(--amber); }
+.row em { font: 600 12px var(--mono); color: var(--muted); font-style: normal; }
+.giverow { display: flex; gap: 6px; flex-wrap: wrap; } .giverow button { min-height: 40px; padding: 6px 10px; background: var(--panel2); border: 1px solid var(--line); border-radius: 4px; }
+#over { position: absolute; inset: 0; background: rgba(9,11,13,.94); display: grid; place-items: center; z-index: 20; padding: 16px; overflow-y: auto; }
+.overbox { max-width: 520px; width: 100%; display: flex; flex-direction: column; gap: 12px; }
+.overbox h2 { font: 900 clamp(40px, 10vw, 64px)/.95 var(--display); margin: 0; text-wrap: balance; } .overbox p { margin: 0; color: var(--muted); }
+.results div { display: flex; gap: 10px; align-items: baseline; padding: 8px 0; border-bottom: 1px solid var(--line); } .results span { font: 600 12px var(--mono); text-transform: uppercase; color: var(--muted); } .results small { margin-left: auto; color: var(--muted); }
+.btns { display: flex; gap: 8px; flex-wrap: wrap; } .btns .primary { flex: 1; min-width: 160px; } .btns button:not(.primary) { background: var(--panel2); border: 1px solid var(--line); border-radius: 4px; padding: 12px 18px; min-height: 48px; flex: 1; min-width: 120px; }
+
+@media (min-width: 900px) {
+  #game { grid-template-columns: minmax(0, 1fr) 380px; grid-template-rows: auto minmax(0, 1fr); column-gap: 0; }
+  #hud-top { grid-column: 1 / -1; }
+  #panel { grid-column: 2; grid-row: 2; margin: 0 calc(-1 * max(16px, env(safe-area-inset-right, 0px))) 0 0; border-top: 0; border-left: 1px solid var(--line); padding-left: 14px; }
+  #stage { grid-column: 1; grid-row: 2; }
+}
+@media (prefers-reduced-motion: reduce) { #toast { transition: none; } }
+
+.h2 { font: 900 clamp(34px, 8vw, 52px)/1 var(--display); letter-spacing: .04em; text-transform: uppercase; margin: 6px 0 0; }
+#menu, #setup { height: 100%; overflow-y: auto; padding: 28px 0 40px; }
+#menu .primary, #menu .ghost, #setup .ghost { width: 100%; }
+.hbtn { background: var(--panel2); border: 1px solid var(--line); border-radius: 4px; width: 38px; height: 34px; font: 700 16px var(--mono); }
+.hbtn.on { color: var(--alert); }
+.chip.warnchip { color: #15110a; background: var(--amber); border-color: var(--amber); animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .65; } }
+#notes { position: absolute; right: 8px; top: 8px; width: min(300px, calc(100% - 64px)); display: flex; flex-direction: column; gap: 6px; z-index: 5; pointer-events: none; }
+.note { pointer-events: auto; background: rgba(21,26,31,.97); border: 1px solid var(--line); border-left: 4px solid var(--amber); border-radius: 4px; padding: 8px 10px; font-size: 13px; animation: slidein .25s ease-out; }
+.note.bad { border-left-color: var(--alert); } .note.good { border-left-color: var(--ok); } .note small { display: block; color: var(--muted); font: 500 10.5px var(--mono); margin-top: 3px; }
+@keyframes slidein { from { transform: translateX(20px); opacity: 0; } }
+#tipbtn { position: absolute; left: 8px; bottom: 8px; width: 40px; height: 40px; border-radius: 50%; background: var(--amber); color: #15110a; border: 0; font: 900 20px var(--display); z-index: 6; box-shadow: 0 0 0 0 rgba(242,180,65,.6); animation: ring 2.4s infinite; }
+@keyframes ring { 70% { box-shadow: 0 0 0 10px rgba(242,180,65,0); } 100% { box-shadow: 0 0 0 0 rgba(242,180,65,0); } }
+#tips { position: absolute; left: 8px; bottom: 56px; width: min(360px, calc(100% - 16px)); max-height: 70%; overflow-y: auto; background: rgba(21,26,31,.98); border: 1px solid var(--amber); border-radius: 6px; padding: 12px 14px; z-index: 6; }
+#tips h4 { margin: 0 0 8px; font: 600 10.5px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--amber); } #tips li { margin-bottom: 7px; font-size: 13px; } #tips ul { margin: 0; padding-left: 18px; }
+#pause, #settings { position: absolute; inset: 0; background: rgba(5,7,9,.86); display: grid; place-items: center; z-index: 30; padding: 16px; overflow-y: auto; }
+#settings { z-index: 40; }
+.pbox { width: min(420px, 100%); display: flex; flex-direction: column; gap: 10px; } .pbox button { width: 100%; }
+.phow { background: var(--panel); border: 1px solid var(--line); padding: 14px; border-radius: 4px; font-size: 13px; } .phow h3 { font: 700 12px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--amber); margin: 12px 0 4px; } .phow h3:first-child { margin-top: 0; } .phow p, .phow ul { margin: 0 0 6px; } .phow ul { padding-left: 18px; }
+.slider { display: flex; flex-direction: column; gap: 6px; } .slider input { width: 100%; accent-color: var(--amber); min-height: 32px; }
+.mark { display: inline-block; font: 800 13px var(--mono); padding: 1px 6px; border-radius: 3px; } .mark.sus { background: var(--amber); color: #15110a; } .mark.dan { background: var(--alert); color: #fff; }
+.hl { border-color: var(--amber) !important; } .tag.you { color: #15110a; background: var(--amber); border-color: var(--amber); }
+.opts { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 6px; } .opts button { min-height: 44px; padding: 8px; background: var(--panel2); border: 1px solid var(--line); border-radius: 4px; font-weight: 600; text-align: left; }
+.opts button small { display: block; color: var(--muted); font: 500 10.5px var(--mono); } .opts button.on { border-color: var(--amber); } .opts button:disabled { opacity: .4; }
+.opts button:not(:disabled):hover { border-color: var(--amber); }
+.meth { font: 600 11px var(--mono); padding: 3px 7px; border-radius: 3px; background: rgba(120,200,255,.15); color: #7cf; } .meth.crash { background: rgba(200,120,120,.18); color: #e99; }
+</style>
+<main id="app">
+  <section id="menu">
+    <div class="setup-inner">
+      <p class="lbl" style="margin:0">Turn-based prison break for 1 to 4 prisoners</p>
+      <h1>THREE <span>STRIKES</span></h1>
+      <p class="tagline">Sneak, lockpick, bribe and hack your way out before the guards catch you three times. Every prison is built fresh from a seed.</p>
+      <button id="m-new" class="primary big">New game</button>
+      <button id="m-resume" class="ghost" hidden>Resume game</button>
+      <button id="m-how" class="ghost">How to play</button>
+      <button id="m-set" class="ghost">Sound settings</button>
+      <div id="how" hidden>
+        <h3>Turns</h3><p>Each prisoner has 2 action points (AP). When everyone is done, guards and inmates move. Hot-seat: pass the device when asked.</p>
+        <h3>Days and nights</h3><p>The week repeats: Morning, Day, Evening, Night. Guard patrol routes are the same every Monday morning, every Tuesday night and so on. The Informant sells them (expensive). At night everyone must be in their own cell. Sleep in your cell to skip the night.</p>
+        <h3>Suspicious or dangerous?</h3><ul><li><b>Yellow ?</b> Suspicious: looting, running, dealing contraband, bribing, being in a restricted room. If caught, the guard searches you and takes contraband. No strike.</li><li><b>Red !</b> Dangerous: out of your cell at night, staying in a restricted room, fighting, attacking guards, being betrayed by an inmate. Caught means a strike.</li><li>When a guard stops you, you get to react: cooperate, bribe, attack or run.</li></ul>
+        <h3>Strikes</h3><p>Strike 1: beaten, contraband and your cell stash confiscated, back to your cell. Strike 2: solitary. Strike 3: transferred, you are out. Cigarettes are never confiscated.</p>
+        <h3>Reading the map</h3><ul><li><b>Red eye</b> on a guard and a red line to you: he sees you right now. Red tint = the tiles he sees while he sees you.</li><li><b>Grey slashed eye</b>: a guard in view who does not see you. Blue tint = the tiles he can see. Walls block sight completely.</li></ul>
+        <h3>Difficulty</h3><p>Easy: fewer guards, the whole map known from the start, and being out of your cell at night is no strike (guards still hunt you). Medium: standard. Hard: more guards. Progress saves automatically.</p>
+        <h3>Hiding</h3><p>In corridors and yards, guards within 2 tiles may spot you. In rooms like the kitchen only a guard on your tile might. In small closed rooms, only the same tile again with a lower chance. Dark helps.</p>
+        <h3>Gear</h3><ul><li>Salvage scrap, craft lockpicks, shivs, dummies, jammers and wirecutters.</li><li>Lockpicking most rooms trips the alarm. Use a jammer or bribe a guard to switch alarms off for a time of day.</li><li>Put a dummy in your bed so empty beds do not trigger a hunt.</li><li>Meth: 3 AP for 7 turns, then 1 AP for 15 turns.</li><li>Your cell has a stash. Nobody else can open it.</li></ul>
+        <h3>Inmates</h3><p>They follow routines, trade, and can be hired to start a brawl in a place and time you choose. Do not steal from someone's cell while he is in it. If they see you do violence they may demand money or betray you.</p>
+        <h3>Getting out</h3><ul><li>Fence: wirecutters, 2 AP, loud.</li><li>Main gate: a keycard, with no guard watching.</li><li>Hack the control room to blind cameras or cut the power in the electrical room.</li></ul>
+        <h3>Keys</h3><p>Arrows or WASD move, Shift sneaks, E ends turn, H hides, F loots, Esc pauses, ? tips. Drag to pan, wheel or pinch to zoom.</p>
+      </div>
+    </div>
+  </section>
+  <section id="setup" hidden>
+    <div class="setup-inner">
+      <h2 class="h2">New game</h2>
+      <div class="grp"><span class="lbl">Prisoners</span><div id="seg-n" class="segs"></div><div id="names"></div></div>
+      <div class="grp"><span class="lbl">Mode</span><div id="seg-mode" class="segs"></div><p id="mode-hint" class="muted" style="margin:0;font-size:13px"></p></div>
+      <div class="grp"><span class="lbl">Difficulty</span><div id="seg-diff" class="segs"></div><p id="diff-hint" class="muted" style="margin:0;font-size:13px"></p></div>
+      <div class="grp" id="shared-row"><label class="check"><input type="checkbox" id="shared"> Shared vision between teammates</label></div>
+      <div class="grp"><label class="lbl" for="seed">Prison seed</label><div class="seedrow"><input id="seed" inputmode="numeric" aria-label="Prison seed"><button id="reseed" class="ghost">Random</button></div></div>
+      <button id="start" class="primary big">Start the break</button>
+      <button id="s-back" class="ghost">Back</button>
+    </div>
+  </section>
+
+  <section id="game" hidden>
+    <header id="hud-top">
+      <div class="brand">THREE <b>STRIKES</b></div>
+      <div id="phase"></div><div id="alert"></div><div id="round"></div><button id="mutebtn" class="hbtn" aria-label="Mute">&#9835;</button><button id="pausebtn" class="hbtn" aria-label="Pause menu">&#9776;</button>
+    </header>
+    <div id="stage">
+      <canvas id="cv" aria-label="Prison map"></canvas>
+      <div id="zoom"><button id="zin" aria-label="Zoom in">+</button><button id="zout" aria-label="Zoom out">&minus;</button><button id="zhome" aria-label="Center on me">&#9678;</button></div>
+      <div id="toast" role="status"></div><div id="notes" aria-live="polite"></div><button id="tipbtn" aria-label="Tips">?</button><div id="tips" hidden></div>
+      <div id="movemenu" hidden></div>
+      <div id="cover" hidden></div>
+    </div>
+    <aside id="panel">
+      <div id="panel-body"></div>
+      <div id="panel-foot"><button id="endturn" class="primary">End turn</button></div>
+    </aside>
+    <div id="modal" hidden></div>
+  </section>
+  <section id="over" hidden></section>
+  <section id="pause" hidden><div class="pbox"><h2 class="h2">Paused</h2><button id="p-resume" class="primary big">Resume</button><p id="p-savemsg" class="muted" style="margin:0;font-size:12.5px"></p><button id="p-set" class="ghost">Sound settings</button><button id="p-how" class="ghost">How to play</button><button id="p-restart" class="ghost">Restart this prison</button><button id="p-quit" class="ghost">Main menu</button><div id="p-howbox" class="phow" hidden></div></div></section>
+  <section id="settings" hidden><div class="pbox"><h2 class="h2">Sound</h2>
+    <label class="check"><input type="checkbox" id="a-mute"> Mute everything</label>
+    <label class="slider"><span class="lbl">Music</span><input type="range" id="a-music" min="0" max="100"></label>
+    <label class="slider"><span class="lbl">Effects</span><input type="range" id="a-sfx" min="0" max="100"></label>
+    <button id="a-close" class="primary">Done</button></div></section>
+</main>
+<script>
+// ===== data.js (v2) : tuning constants, rooms, items, loot, shops =====
+const CFG = {
+  W: 22, H: 16, AP: 2, HP_PRISONER: 6, HP_GUARD: 6,
+  VISION_LIT: 5, VISION_DARK: 1, HEAR: 3,
+  NOISE: { move: 3, sneak: 1, run: 5, loot: 1, steal: 2, lockpick: 2, fight: 5, gun: 7, fence: 5, hack: 1, power: 2, alarm: 7 },
+  PHASES: [
+    { id: 'morning', name: 'Morning', len: 6, lights: true },
+    { id: 'day', name: 'Day', len: 12, lights: true },
+    { id: 'evening', name: 'Evening', len: 6, lights: true },
+    { id: 'night', name: 'Lights out', len: 12, lights: false },
+  ],
+  DAYS: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+  CAMERA_RANGE: 2, HACK_TURNS: 8, POWER_TURNS: 6,
+  GUARDS: 6, GUARDS_NIGHT: 4, NPCS: 8,
+  METH: { high: 7, crash: 15 },
+  NIGHT_WARN: 5, ROUTE_PRICE: 22, INTEL_PRICE: 4,
+};
+
+// cover: how well a hidden prisoner is concealed. open = corridors, yards (found within 2 tiles by day);
+// mid = kitchen, dining and similar; room = closed small rooms. size is [w,h] in tiles (rotated at placement).
+// allowed: where a prisoner may be by day without it being suspicious. At night only your own cell is allowed.
+const DIFFS = {
+  easy:   { name: 'Easy',   guards: 4, night: 3, desc: 'Fewer guards. You know the whole map. Being out of your cell at night is not a strike (they still hunt you).' },
+  medium: { name: 'Medium', guards: 6, night: 4, desc: 'The standard prison.' },
+  hard:   { name: 'Hard',   guards: 8, night: 6, desc: 'More guards on every shift.' },
+};
+const ROOMS = {
+  cell:      { name: 'Cell',            size: [1, 1], allowed: true,  cover: 'room', lit: true,  spots: [1, 2], loot: 'cell' },
+  solitary:  { name: 'Solitary',        size: [1, 1], allowed: false, cover: 'room', lit: false, spots: [0, 0], locked: true },
+  common:    { name: 'Common Room',     size: [2, 2], allowed: true,  cover: 'mid',  lit: true,  spots: [2, 3], loot: 'common', routine: 'common' },
+  dining:    { name: 'Dining Hall',     size: [2, 3], allowed: true,  cover: 'mid',  lit: true,  spots: [2, 3], loot: 'common', routine: 'dining', link: 'kitchen' },
+  showers:   { name: 'Showers',         size: [1, 2], allowed: true,  cover: 'room', lit: true,  spots: [1, 1], loot: 'common', routine: 'showers' },
+  library:   { name: 'Library',         size: [1, 2], allowed: true,  cover: 'mid',  lit: true,  spots: [1, 2], loot: 'common', work: true },
+  workshop:  { name: 'Workshop',        size: [2, 1], allowed: true,  cover: 'mid',  lit: true,  spots: [2, 3], loot: 'workshop', work: true, salvage: true },
+  laundry:   { name: 'Laundry',         size: [1, 2], allowed: true,  cover: 'mid',  lit: true,  spots: [1, 2], loot: 'laundry', work: true, salvage: true },
+  kitchen:   { name: 'Kitchen',         size: [1, 2], allowed: true,  cover: 'mid',  lit: true,  spots: [2, 2], loot: 'kitchen', work: true, salvage: true, link: 'dining' },
+  infirmary: { name: 'Infirmary',       size: [1, 2], allowed: true,  cover: 'room', lit: true,  spots: [1, 2], loot: 'infirmary' },
+  visitor:   { name: 'Visitor Room',    size: [1, 1], allowed: true,  cover: 'room', lit: true,  spots: [0, 1], loot: 'common' },
+  storage:   { name: 'Storage',         size: [1, 1], allowed: false, cover: 'room', lit: false, spots: [2, 3], loot: 'storage', salvage: true, locked: true, alarm: true },
+  armory:    { name: 'Armory',          size: [1, 2], allowed: false, cover: 'room', lit: true,  spots: [2, 3], loot: 'armory', locked: true, alarm: true },
+  guardroom: { name: 'Guard Room',      size: [2, 1], allowed: false, cover: 'room', lit: true,  spots: [1, 2], loot: 'guardroom', locked: true, alarm: true },
+  warden:    { name: "Warden's Office", size: [2, 1], allowed: false, cover: 'room', lit: true,  spots: [2, 3], loot: 'warden', locked: true, alarm: true },
+  control:   { name: 'Control Room',    size: [1, 1], allowed: false, cover: 'room', lit: true,  spots: [1, 1], loot: 'control', locked: true, alarm: true, terminal: true },
+  electrical:{ name: 'Electrical Room', size: [1, 1], allowed: false, cover: 'room', lit: false, spots: [1, 1], loot: 'storage', locked: true, alarm: true, breaker: true },
+  court:     { name: 'Basketball Court',size: [4, 3], allowed: true,  cover: 'open', lit: true,  spots: [1, 2], loot: 'yard', routine: 'yard', outdoor: true },
+  yard:      { name: 'Yard',            allowed: true,  cover: 'open', lit: true,  spots: [0, 1], loot: 'yard', outdoor: true },
+  corridor:  { name: 'Corridor',        allowed: true,  cover: 'open', lit: true,  spots: [0, 0] },
+  door:      { name: 'Exit Door',       allowed: true,  cover: 'open', lit: true,  spots: [0, 0] },
+  gate:      { name: 'Main Gate',       allowed: false, cover: 'open', lit: true,  spots: [0, 0], outdoor: true, exit: 'gate' },
+  fence:     { name: 'Perimeter Fence', allowed: false, cover: 'open', lit: false, spots: [0, 0], outdoor: true, exit: 'fence' },
+};
+const FIXED_ROOMS = ['dining', 'common', 'kitchen', 'showers', 'library', 'workshop', 'laundry', 'infirmary', 'visitor', 'storage',
+  'armory', 'guardroom', 'warden', 'control', 'electrical'];
+
+const ITEMS = {
+  cigs:      { name: 'Cigarettes', icon: 'C', value: 1, desc: 'Prison currency. Guards can never take it.' },
+  scrap:     { name: 'Scrap', icon: 's', value: 1, desc: 'Metal and wire. Craft into tools.' },
+  shiv:      { name: 'Shiv', icon: '/', value: 5, weapon: 2, contraband: true, desc: 'Melee weapon. High chance to kill.' },
+  baton:     { name: 'Baton', icon: '|', value: 6, weapon: 2, contraband: true, desc: 'Melee weapon. Knocks people out.' },
+  pistol:    { name: 'Pistol', icon: 'P', value: 20, weapon: 3, ranged: 2, contraband: true, desc: 'Needs ammo. Range 2. Very loud.' },
+  ammo:      { name: 'Ammo', icon: '.', value: 3, contraband: true, desc: 'Pistol rounds.' },
+  lockpick:  { name: 'Lockpick', icon: 'L', value: 6, contraband: true, desc: 'Opens locked doors. Most staff doors have alarms.' },
+  jammer:    { name: 'Alarm Jammer', icon: 'J', value: 12, contraband: true, desc: 'One use. Lets a lockpick open an alarmed door quietly.' },
+  wirecutters:{name: 'Wirecutters', icon: 'W', value: 14, contraband: true, desc: 'Cut through the perimeter fence.' },
+  keycard:   { name: 'Keycard', icon: 'K', value: 25, contraband: true, desc: 'Opens any door without an alarm. Opens the main gate.' },
+  usb:       { name: 'Hacker USB', icon: 'U', value: 16, contraband: true, desc: 'Hack the control room terminal.' },
+  uniform:   { name: 'Guard Uniform', icon: 'G', value: 10, contraband: true, desc: 'Wear it to pass as staff. Close guards may see through it.' },
+  flashlight:{ name: 'Flashlight', icon: 'F', value: 5, contraband: true, desc: 'See 3 tiles in the dark.' },
+  dummy:     { name: 'Bed Dummy', icon: 'D', value: 4, contraband: true, desc: 'Prop it in your bed so night checks find "you" asleep.' },
+  meth:      { name: 'Meth', icon: 'M', value: 8, contraband: true, desc: '3 AP for 7 turns, then a 15 turn crash at 1 AP.' },
+  pills:     { name: 'Painkillers', icon: '+', value: 3, desc: 'Heal 2 HP.' },
+  watch:     { name: 'Gold Watch', icon: 'o', value: 8, desc: 'Worth a lot to the right buyer.' },
+  phone:     { name: 'Cell Phone', icon: 'T', value: 9, contraband: true, desc: 'Worth a lot to the right buyer.' },
+};
+const isContraband = it => !!(ITEMS[it] && ITEMS[it].contraband);
+
+const RECIPES = [
+  { out: 'shiv', cost: { scrap: 2 } },
+  { out: 'lockpick', cost: { scrap: 3 } },
+  { out: 'dummy', cost: { scrap: 3 } },
+  { out: 'jammer', cost: { scrap: 4 } },
+  { out: 'wirecutters', cost: { scrap: 5 } },
+];
+
+const LOOT = {
+  cell:      [['cigs', 4, [1, 3]], ['scrap', 3, 1], ['pills', 1, 1], ['phone', 0.6, 1], ['meth', 0.6, 1], ['', 3, 0]],
+  common:    [['cigs', 4, [1, 3]], ['scrap', 2, 1], ['pills', 1, 1], ['watch', 0.5, 1], ['', 3, 0]],
+  yard:      [['scrap', 4, 1], ['cigs', 2, 1], ['', 4, 0]],
+  workshop:  [['scrap', 6, [1, 2]], ['lockpick', 1.5, 1], ['wirecutters', 0.8, 1], ['shiv', 1, 1], ['jammer', 0.6, 1], ['', 1, 0]],
+  laundry:   [['uniform', 2, 1], ['scrap', 3, 1], ['dummy', 1, 1], ['cigs', 2, 1], ['', 2, 0]],
+  kitchen:   [['shiv', 2, 1], ['scrap', 3, 1], ['cigs', 2, [1, 2]], ['', 2, 0]],
+  storage:   [['scrap', 4, [1, 2]], ['flashlight', 2, 1], ['uniform', 1.5, 1], ['lockpick', 1, 1], ['wirecutters', 1, 1], ['jammer', 1, 1], ['', 1, 0]],
+  infirmary: [['pills', 5, [1, 2]], ['meth', 0.8, 1], ['cigs', 1, 1], ['', 2, 0]],
+  armory:    [['baton', 3, 1], ['pistol', 1.5, 1], ['ammo', 3, [2, 3]], ['keycard', 0.8, 1], ['', 1, 0]],
+  guardroom: [['baton', 2, 1], ['keycard', 1, 1], ['cigs', 3, [2, 4]], ['flashlight', 2, 1], ['uniform', 1.5, 1], ['', 1, 0]],
+  warden:    [['keycard', 2, 1], ['cigs', 4, [4, 8]], ['usb', 1.5, 1], ['watch', 2, 1], ['jammer', 1, 1], ['', 1, 0]],
+  control:   [['usb', 3, 1], ['cigs', 2, [1, 3]], ['', 1, 0]],
+};
+
+// vendors are fixed NPCs in a room (present except at night); inmates carry a few random goods
+const VENDORS = {
+  dealer:    { name: 'Dealer',    room: 'common',    sells: { shiv: 8, lockpick: 9, wirecutters: 20, usb: 22, flashlight: 7, uniform: 14, scrap: 2, meth: 12, jammer: 15, dummy: 6 }, buys: true },
+  orderly:   { name: 'Orderly',   room: 'infirmary', sells: { pills: 4 } },
+  fixer:     { name: 'Fixer',     room: 'dining',    intel: true },
+  informant: { name: 'Informant', room: 'library',   routes: true },
+};
+const INMATE_STOCK = { scrap: 3, pills: 5, shiv: 10, lockpick: 11, meth: 14, flashlight: 8, dummy: 7, cigs: 0 };
+
+// bribery: base price multiplier by purpose
+const BRIBE = {
+  blind:   { label: 'Look the other way', mult: 1, desc: 'Next time he sees you doing something suspicious, he ignores it.' },
+  alarm:   { label: 'Switch off door alarms', mult: 2, desc: 'During a time of day you choose, lockpicking will not trip alarms.' },
+  release: { label: 'Let me go, now', mult: 2.5, desc: 'Only when a guard has stopped you. He drops it.' },
+};
+const OFFERS = [{ k: 'low', label: 'Low', f: 0.7 }, { k: 'fair', label: 'Fair', f: 1 }, { k: 'high', label: 'Generous', f: 1.5 }];
+
+const PLAYER_COLORS = ['#e4572e', '#2e9be4', '#e4c12e', '#5ec269'];
+const NPC_NAMES = ['Dutch', 'Mouse', 'Rico', 'Slim', 'Tiny', 'Ghost', 'Padre', 'Wolf', 'Cricket', 'Bones', 'Lenny', 'Moses'];
+const GUARD_NAMES = ['Hobbs', 'Kowal', 'Reyes', 'Brandt', 'Novak', 'Dixon', 'Marsh', 'Pike', 'Voss', 'Quinn'];
+
+// ===== mapgen.js (v2) : seeded prison with multi-tile rooms, hallways, yard, court =====
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const rint = (rng, a, b) => a + Math.floor(rng() * (b - a + 1));
+const pick = (rng, arr) => arr[Math.floor(rng() * arr.length)];
+function shuffle(rng, arr) { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; }
+const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+
+function mkTile(x, y, type) {
+  return { x, y, type, name: ROOMS[type].name, room: null, camera: false, flood: false, nightLamp: false, spots: 0 };
+}
+function tileAt(map, x, y) { return (x < 0 || y < 0 || x >= map.W || y >= map.H) ? null : map.grid[y * map.W + x]; }
+function kindOf(t) {
+  if (t.type === 'fence' || t.type === 'gate') return 'exit';
+  if (t.type === 'door') return 'door';
+  if (t.type === 'corridor') return 'corr';
+  if (t.type === 'yard' || t.type === 'court') return 'yard';
+  return 'room';
+}
+// is there a passage between two adjacent tiles? Fence and gate are never walked on, they are exits.
+function linked(map, a, b) {
+  if (!a || !b) return false;
+  const ka = kindOf(a), kb = kindOf(b);
+  if (ka === 'exit' || kb === 'exit') return false;
+  if (a.room && a.room === b.room) return true;
+  const pair = (x, y) => (ka === x && kb === y) || (ka === y && kb === x);
+  if (ka === 'corr' && kb === 'corr') return true;
+  if (pair('corr', 'door') || pair('corr', 'room')) return true;
+  if (ka === 'yard' && kb === 'yard') return true;
+  if (pair('door', 'yard')) return true;
+  if (ka === 'room' && kb === 'room') return ROOMS[a.type].link === b.type && ROOMS[b.type].link === a.type;
+  return false;
+}
+function neighbors(map, t) {
+  const res = [];
+  for (const [dx, dy] of DIRS) { const n = tileAt(map, t.x + dx, t.y + dy); if (n && linked(map, t, n)) res.push(n); }
+  return res;
+}
+function exitsNear(map, t) { // fence/gate tiles directly next to a yard tile
+  const res = [];
+  for (const [dx, dy] of DIRS) { const n = tileAt(map, t.x + dx, t.y + dy); if (n && kindOf(n) === 'exit') res.push(n); }
+  return res;
+}
+function coverOf(t) { return ROOMS[t.type].cover; }
+
+function generateMap(rng, nPlayers) {
+  for (let attempt = 0; attempt < 300; attempt++) { const m = tryGenerate(rng, nPlayers); if (m) return m; }
+  throw new Error('map generation failed');
+}
+
+function tryGenerate(rng, n) {
+  const W = CFG.W, H = CFG.H, grid = new Array(W * H).fill(null);
+  const map = { W, H, grid, rooms: [], cams: [] };
+  const set = (x, y, type) => (grid[y * W + x] = mkTile(x, y, type));
+  const bx0 = 2, bx1 = W - 3, by0 = 2, by1 = H - 5; // building area
+  const inB = (x, y) => x >= bx0 && x <= bx1 && y >= by0 && y <= by1;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    if ((x === 0 || x === W - 1) && (y === 0 || y === H - 1)) continue;
+    if (x === 0 || y === 0 || x === W - 1 || y === H - 1) set(x, y, 'fence');
+    else if (!inB(x, y)) set(x, y, 'yard');
+  }
+  const mkRoom = (type, tiles) => {
+    const d = ROOMS[type];
+    const r = { id: map.rooms.length, type, name: d.name, tiles, locked: !!d.locked, alarm: !!d.alarm, owner: null, npcOwners: [],
+      spots: d.spots ? rint(rng, d.spots[0], d.spots[1]) : 0, salv: d.salvage ? rint(rng, 2, 4) : 0, dummy: false, stash: {}, openUntil: 0 };
+    tiles.forEach(t => (t.room = r)); map.rooms.push(r); return r;
+  };
+  // basketball court in the thick south yard
+  const cx = rint(rng, 2, W - 6), ct = [];
+  for (let y = by1 + 1; y <= by1 + 3; y++) for (let x = cx; x < cx + 4; x++) ct.push(set(x, y, 'court'));
+  map.court = mkRoom('court', ct);
+  for (const t of grid) if (t && t.type === 'yard') t.spots = rint(rng, 0, 1);
+  // corridors: spine plus spokes
+  const sr = rint(rng, by0 + 3, by1 - 3);
+  for (let x = bx0 + 1; x <= bx1 - 1; x++) set(x, sr, 'corridor');
+  set(bx0, sr, 'door'); set(bx1, sr, 'door');
+  const cols = [], nSp = rint(rng, 3, 4); let tries = 0;
+  while (cols.length < nSp && tries++ < 80) { const c = rint(rng, bx0 + 2, bx1 - 2); if (cols.every(o => Math.abs(o - c) >= 4)) cols.push(c); }
+  if (cols.length < 3) return null;
+  for (const c of cols) {
+    let ya = by0, yb = by1;
+    if (rng() < 0.35) { if (rng() < 0.5) ya += rint(rng, 1, 2); else yb -= rint(rng, 1, 2); }
+    for (let y = ya; y <= yb; y++) if (y !== sr) set(c, y, ((y === by0 || y === by1) && rng() < 0.7) ? 'door' : 'corridor');
+  }
+  const isCorr = (x, y) => { const t = tileAt(map, x, y); return t && t.type === 'corridor'; };
+  const free = (x, y) => inB(x, y) && !grid[y * W + x];
+  const touchesCorr = cells => cells.some(([x, y]) => DIRS.some(([dx, dy]) => isCorr(x + dx, y + dy)));
+  // cell block first so player cells sit together
+  const front = []; for (let y = by0; y <= by1; y++) for (let x = bx0; x <= bx1; x++) if (free(x, y) && touchesCorr([[x, y]])) front.push([x, y]);
+  const nCells = n + 5 + 1; if (front.length < nCells + 6) return null;
+  const seed = pick(rng, front);
+  front.sort((a, b) => (Math.abs(a[0] - seed[0]) + Math.abs(a[1] - seed[1])) - (Math.abs(b[0] - seed[0]) + Math.abs(b[1] - seed[1])) + (rng() - 0.5));
+  const cellSlots = front.slice(0, nCells);
+  map.cells = [];
+  cellSlots.forEach(([x, y], i) => {
+    if (i < n) { const t = set(x, y, 'cell'); const r = mkRoom('cell', [t]); r.owner = i; map.cells.push(t); }
+    else if (i < nCells - 1) { const t = set(x, y, 'cell'); mkRoom('cell', [t]); }
+  });
+  const sol = cellSlots[nCells - 1]; // solitary: the farthest slot of the cluster
+  { const t = set(sol[0], sol[1], 'solitary'); mkRoom('solitary', [t]); map.solitary = t; }
+  // bigger rooms next to a corridor
+  const order = FIXED_ROOMS.slice().sort((a, b) => ROOMS[b].size[0] * ROOMS[b].size[1] - ROOMS[a].size[0] * ROOMS[a].size[1] + (rng() - 0.5));
+  for (const type of order) {
+    const [w0, h0] = ROOMS[type].size; const orients = w0 === h0 ? [[w0, h0]] : shuffle(rng, [[w0, h0], [h0, w0]]);
+    let cands = [];
+    for (const [rw, rh] of orients) for (let y = by0; y + rh - 1 <= by1; y++) for (let x = bx0; x + rw - 1 <= bx1; x++) {
+      const cells = []; let ok = true;
+      for (let j = 0; j < rh && ok; j++) for (let i = 0; i < rw; i++) { if (!free(x + i, y + j)) { ok = false; break; } cells.push([x + i, y + j]); }
+      if (ok && touchesCorr(cells)) cands.push(cells);
+    }
+    if (type === 'kitchen') { const d = map.rooms.find(r => r.type === 'dining'); if (d) { const nb = cands.filter(cs => cs.some(([x, y]) => DIRS.some(([dx, dy]) => { const t = tileAt(map, x + dx, y + dy); return t && t.room === d; }))); if (nb.length) cands = nb; } }
+    if (!cands.length) return null;
+    const cells = pick(rng, cands); const tiles = cells.map(([x, y]) => set(x, y, type)); mkRoom(type, tiles);
+  }
+  // a few spare cells
+  const spare = shuffle(rng, []); void spare;
+  const extra = []; for (let y = by0; y <= by1; y++) for (let x = bx0; x <= bx1; x++) if (free(x, y) && touchesCorr([[x, y]])) extra.push([x, y]);
+  shuffle(rng, extra).slice(0, 3).forEach(([x, y]) => { const t = set(x, y, 'cell'); mkRoom('cell', [t]); });
+  // gate: a border fence tile with a yard neighbour
+  const gcs = [];
+  for (const t of grid) if (t && t.type === 'fence') {
+    const inner = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => tileAt(map, t.x + dx, t.y + dy)).filter(o => o && kindOf(o) === 'yard');
+    if (inner.length && t.x > 2 && t.x < W - 3 || (inner.length && t.y > 2 && t.y < H - 3 && (t.x === 0 || t.x === W - 1))) gcs.push(t);
+  }
+  if (!gcs.length) return null;
+  const g = pick(rng, gcs); g.type = 'gate'; g.name = ROOMS.gate.name; map.gate = g;
+  // connectivity from the first cell
+  const start = map.cells[0]; const seen = new Set([start]); const q = [start];
+  while (q.length) { const c = q.shift(); for (const nb of neighbors(map, c)) if (!seen.has(nb)) { seen.add(nb); q.push(nb); } }
+  if (grid.some(t => t && kindOf(t) !== 'exit' && !seen.has(t))) return null;
+  if (grid.some(t => t && t.type === 'fence' && !exitsNearYard(map, t))) return null;
+  // cameras and lights
+  const addCam = t => { if (t && !t.camera) { t.camera = true; map.cams.push(t); } };
+  addCam(tileAt(map, g.x, g.y)); // the gate camera watches the approach
+  for (const type of ['armory', 'warden', 'control', 'common']) { const r = map.rooms.find(r => r.type === type); if (r && rng() < 0.85) addCam(r.tiles[0]); }
+  shuffle(rng, grid.filter(t => t && t.type === 'corridor')).slice(0, 4).forEach(addCam);
+  addCam(pick(rng, map.court.tiles));
+  shuffle(rng, grid.filter(t => t && t.type === 'yard')).slice(0, 2).forEach(addCam);
+  for (const c of map.cams) if (kindOf(c) === 'yard' || c.type === 'gate') c.flood = true;
+  for (const t of grid) if (t && t.type === 'corridor') t.nightLamp = rng() < 0.45;
+  for (const nb of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const y = tileAt(map, g.x + nb[0], g.y + nb[1]); if (y && kindOf(y) === 'yard') y.flood = true; }
+  // random flips so the thick yard can be on any side
+  flipMap(map, rng() < 0.5, rng() < 0.5);
+  return map;
+}
+function exitsNearYard(map, t) { return DIRS.some(([dx, dy]) => { const n = tileAt(map, t.x + dx, t.y + dy); return n && kindOf(n) === 'yard'; }); }
+function flipMap(map, fx, fy) {
+  if (!fx && !fy) return;
+  const ng = new Array(map.W * map.H).fill(null);
+  for (const t of map.grid) if (t) { if (fx) t.x = map.W - 1 - t.x; if (fy) t.y = map.H - 1 - t.y; ng[t.y * map.W + t.x] = t; }
+  map.grid = ng;
+}
+
+// ===== engine1.js (v2) : world, time, light, vision, hiding, noise, suspicion =====
+const tkey = t => t.x + ',' + t.y;
+const ptile = (w, p) => tileAt(w.map, p.x, p.y);
+const unitTile = (w, u) => tileAt(w.map, u.x, u.y);
+
+function newWorld(opts) {
+  const seed = opts.seed >>> 0, rng = mulberry32(seed), n = opts.players, diff = DIFFS[opts.diff] ? opts.diff : 'medium';
+  const map = generateMap(rng, n);
+  const w = {
+    seed, rng, map, diff, nGuards: DIFFS[diff].guards, nGuardsNight: DIFFS[diff].night, mode: opts.mode || 'coop', round: 1, cur: 0, phase: 'players', over: false, result: null, paused: null,
+    players: [], guards: [], npcs: [], log: [], notes: [], anim: [], fx: [], alert: 0, alertPos: null, alertTimer: 0, powerOff: 0, camsOff: 0,
+    controllers: { guards: 'ai' }, nextId: 1, shared: opts.shared !== false && (opts.mode || 'coop') === 'coop', routes: {}, brawls: [], contracts: [], nightWarned: -1,
+  };
+  for (let i = 0; i < n; i++) {
+    const c = map.cells[i];
+    w.players.push({ id: i, name: (opts.names && opts.names[i]) || ('Player ' + (i + 1)), color: PLAYER_COLORS[i],
+      x: c.x, y: c.y, hp: CFG.HP_PRISONER, ap: CFG.AP, items: { cigs: 3 }, strikes: 0, hidden: false, status: 'free', solitary: 0, ko: 0, skip: 0,
+      wearing: false, asleep: false, wanted: false, memory: new Set(), intel: { cams: false, corrupt: false, seeUntil: 0 }, routeIntel: new Set(), alarmOff: new Set(),
+      workCd: {}, shop: null, pending: null, meth: null, loudRound: 0, spotted: [], heard: [], stats: { moves: 0, loots: 0 }, tickRound: 0, blocked: false });
+  }
+  spawnGuards(w); spawnNpcs(w);
+  if (diff === 'easy') for (const p of w.players) for (const t of map.grid) if (t) p.memory.add(tkey(t)); // easy: the whole layout is known from the start
+  w.players.forEach(p => updateMemory(w, p));
+  addLog(w, 'Monday morning. The yard is quiet. Plan your way out.', null, null, 'info');
+  return w;
+}
+
+function spawnGuards(w) {
+  const { map, rng } = w; const names = shuffle(rng, GUARD_NAMES.slice());
+  const gate = map.gate; const front = neighbors(map, gate).concat(DIRS.map(([dx, dy]) => tileAt(map, gate.x + dx, gate.y + dy)).filter(t => t && kindOf(t) === 'yard'))[0];
+  const gr = map.rooms.find(r => r.type === 'guardroom');
+  const open = map.grid.filter(t => t && (t.type === 'corridor' || t.type === 'yard'));
+  for (let i = 0; i < w.nGuards; i++) {
+    const t = i === 0 ? front : i === 1 ? gr.tiles[0] : pick(rng, open);
+    w.guards.push({ id: w.nextId++, name: names[i], x: t.x, y: t.y, hp: CFG.HP_GUARD, ap: CFG.AP, state: i < 2 ? 'post' : 'patrol', post: i < 2, home: { x: t.x, y: t.y },
+      idx: i, routeI: 0, routeKey: '', dest: null, target: null, ko: 0, dead: false, found: false, off: false, sus: {}, blind: {}, corrupt: rng() < 0.65, price: rint(rng, 3, 7),
+      carry: { baton: 1, cigs: rint(rng, 1, 3), keycard: rng() < 0.3 ? 1 : 0 }, wait: 0, lastSeen: null, searchLeft: 0, roam: false, huntLeft: 0, px: t.x, py: t.y });
+  }
+}
+
+function addLog(w, text, x, y, kind, pid) {
+  w.log.push({ round: w.round, text, x, y, kind: kind || 'info', pid: pid == null ? null : pid, id: w.log.length });
+  if (w.log.length > 500) w.log.splice(0, 100);
+}
+function notify(w, pid, text, kind) { // popups for the player: pid null = everyone
+  w.notes.push({ id: w.notes.length, round: w.round, pid: pid == null ? null : pid, text, kind: kind || 'info' });
+  addLog(w, text, null, null, kind === 'bad' ? 'alert' : 'info', pid);
+}
+
+// ----- time -----
+function timeOf(w) {
+  const total = CFG.PHASES.reduce((a, p) => a + p.len, 0), r = w.round - 1, day = Math.floor(r / total); let rem = r % total;
+  for (let i = 0; i < CFG.PHASES.length; i++) { const p = CFG.PHASES[i]; if (rem < p.len) return { day, wd: CFG.DAYS[day % 7], wi: day % 7, phase: p.id, name: p.name, left: p.len - rem, len: p.len, lights: p.lights, pi: i, slot: (day % 7) + '-' + p.id }; rem -= p.len; }
+}
+const phaseOf = w => timeOf(w);
+const isNight = w => timeOf(w).phase === 'night';
+const slotLabel = slot => { const [d, ph] = slot.split('-'); return CFG.DAYS[+d] + ' ' + CFG.PHASES.find(p => p.id === ph).name.replace('Lights out', 'Night'); };
+function nextSlot(w, phaseId) { // slot key of the next time `phaseId` begins (or is under way)
+  const t = timeOf(w); const pi = CFG.PHASES.findIndex(p => p.id === phaseId);
+  if (pi >= t.pi) return t.wi + '-' + phaseId; return ((t.wi + 1) % 7) + '-' + phaseId;
+}
+
+// ----- light -----
+function tileLit(w, t) {
+  if (w.powerOff > 0) return false;
+  const r = ROOMS[t.type];
+  if (['guardroom', 'control', 'door', 'gate', 'warden', 'armory'].includes(t.type)) return true;
+  if (!r.lit) return false;
+  if (!isNight(w)) return true;
+  if (t.type === 'corridor') return t.nightLamp;
+  if (r.outdoor) return t.flood || t.camera;
+  return false;
+}
+const darkRange = (w, p) => (p && p.items.flashlight) ? 3 : CFG.VISION_DARK;
+
+// ----- distances and vision (BFS on the tile graph; walls follow the links, locked rooms block sight) -----
+function reach(w, from, maxD, blockLocked) {
+  const dist = new Map([[tkey(from), 0]]); const q = [from];
+  while (q.length) {
+    const c = q.shift(), d = dist.get(tkey(c)); if (d >= maxD) continue;
+    for (const n of neighbors(w.map, c)) {
+      const k = tkey(n); if (dist.has(k)) continue; dist.set(k, d + 1);
+      if (blockLocked && n.room && n.room.locked && n.room !== c.room) continue;
+      q.push(n);
+    }
+  }
+  return dist;
+}
+function pathDist(w, a, b, maxD) { const d = reach(w, a, maxD, false).get(tkey(b)); return d === undefined ? Infinity : d; }
+// true line of sight: the straight line between tile centres may not cross a wall (every step must be linked)
+function clearLine(w, a, b) {
+  if (a === b) return true;
+  const dx = b.x - a.x, dy = b.y - a.y, N = Math.max(Math.abs(dx), Math.abs(dy)) * 6, seq = [a];
+  for (let i = 1; i <= N; i++) {
+    const x = Math.floor(a.x + 0.5 + dx * i / N + 1e-6 * Math.sign(dx)), y = Math.floor(a.y + 0.5 + dy * i / N + 1e-6 * Math.sign(dy));
+    const t = tileAt(w.map, x, y); if (!t) return false; if (t !== seq[seq.length - 1]) seq.push(t);
+  }
+  for (let i = 1; i < seq.length; i++) {
+    const p = seq[i - 1], q = seq[i], sx = q.x - p.x, sy = q.y - p.y;
+    if (q.room && q.room.locked && q.room !== a.room && q !== b) return false;
+    if (sx && sy) { // diagonal step: both corner routes must be open
+      const c1 = tileAt(w.map, p.x + sx, p.y), c2 = tileAt(w.map, p.x, p.y + sy);
+      if (!(c1 && c2 && linked(w.map, p, c1) && linked(w.map, c1, q) && linked(w.map, p, c2) && linked(w.map, c2, q))) return false;
+    } else if (!linked(w.map, p, q)) return false;
+  }
+  return true;
+}
+function visibleSet(w, p) {
+  const src = ptile(w, p), set = new Set();
+  for (const [k, d] of reach(w, src, CFG.VISION_LIT, true)) {
+    const [x, y] = k.split(',').map(Number), t = tileAt(w.map, x, y);
+    if (d <= (tileLit(w, t) ? CFG.VISION_LIT : darkRange(w, p)) && clearLine(w, src, t)) set.add(k);
+  }
+  for (const k of [...set]) { const [x, y] = k.split(',').map(Number); const t = tileAt(w.map, x, y); if (kindOf(t) === 'yard') for (const e of exitsNear(w.map, t)) set.add(tkey(e)); }
+  return set;
+}
+function updateMemory(w, p) { if (p.status === 'free' || p.status === 'solitary') for (const k of visibleSet(w, p)) p.memory.add(k); }
+function teamVisible(w, p) {
+  const s = visibleSet(w, p);
+  if (w.shared) for (const q of w.players) if (q.id !== p.id && (q.status === 'free' || q.status === 'solitary')) for (const k of visibleSet(w, q)) s.add(k);
+  return s;
+}
+// path distance from guard to the prisoner if the prisoner is inside the guard's sight range, else Infinity
+function sightDist(w, g, tile) {
+  const d = reach(w, unitTile(w, g), CFG.VISION_LIT, true).get(tkey(tile));
+  if (d === undefined || !clearLine(w, unitTile(w, g), tile)) return Infinity;
+  return d <= (tileLit(w, tile) ? CFG.VISION_LIT : CFG.VISION_DARK) ? d : Infinity;
+}
+// hiding: open ground is checked within 2 tiles by day and only on the same tile at night; rooms and mid terrain only on the same tile
+function hideFind(w, p, d) {
+  const cov = coverOf(ptile(w, p));
+  if (cov === 'open') return isNight(w) ? (d === 0 && w.rng() < 0.4) : (d <= 2 && w.rng() < 0.65);
+  return d === 0 && w.rng() < (cov === 'mid' ? 0.2 : 0.1);
+}
+function guardSees(w, g, p, plain) {
+  if (g.ko > 0 || g.dead || g.off || p.status !== 'free') return false;
+  const d = sightDist(w, g, ptile(w, p)); if (d === Infinity) return false;
+  if (!p.hidden) return true;
+  return plain ? false : hideFind(w, p, d);
+}
+const guardAtTile = (w, g) => unitTile(w, g);
+
+// ----- zones and suspicion -----
+const cellOf = (w, p) => w.map.cells[p.id].room;
+const inOwnCell = (w, p) => ptile(w, p).room === cellOf(w, p);
+function restricted(w, p, t) {
+  if (p.status === 'solitary') return false;
+  if (isNight(w)) return !(t.room && t.room.type === 'cell' && t.room.owner === p.id);
+  return !ROOMS[t.type].allowed;
+}
+function trespassLevel(w, p) { // what a guard who sees p right now concludes
+  if (p.status !== 'free' || p.asleep) return null;
+  const t = ptile(w, p);
+  if (isNight(w)) return inOwnCell(w, p) ? null : 'danger';
+  return restricted(w, p, t) ? 'sus' : null;
+}
+function raiseAlert(w, amount, x, y, text) {
+  w.alert = Math.min(3, w.alert + amount); w.alertTimer = 0; if (x != null) w.alertPos = { x, y };
+  if (text) addLog(w, text, x, y, 'alert');
+}
+// a guard forms an opinion of prisoner p. 'sus' = yellow ?, 'danger' = red !
+function markSuspect(w, g, p, level, kind) {
+  if (/attack|fight|gate|ratted/i.test(kind || '')) p.violentRound = w.round; // serious offences are never waived on easy
+  if (g.ko > 0 || g.dead || g.off || p.status !== 'free') return false;
+  const bl = g.blind[p.id];
+  if (level === 'sus' && bl && bl.until >= w.round && bl.charges > 0) { bl.charges--; notify(w, p.id, g.name + ' turns a blind eye, as agreed.', 'good'); return false; }
+  let s = g.sus[p.id]; const fresh = !s;
+  if (!s) s = g.sus[p.id] = { level: 'sus', obs: 0, kind };
+  if (level === 'danger') s.level = 'danger';
+  s.last = { x: p.x, y: p.y }; s.kind = kind; s.seen = w.round; g.lastSeen = { x: p.x, y: p.y };
+  if (s.level === 'danger') {
+    if (g.state !== 'hunt' || g.target !== p.id) { notify(w, p.id, g.name + ' saw you (' + kind + '). He is hunting you!', 'bad'); raiseAlert(w, 1, p.x, p.y); }
+    g.state = 'hunt'; g.target = p.id; g.huntLeft = 8; g.roam = true;
+  } else if (g.state !== 'hunt' && g.state !== 'brawl') {
+    if (fresh || g.state !== 'sus') notify(w, p.id, g.name + ' noticed you (' + kind + ') and is coming over.', 'warn');
+    g.state = 'sus'; g.target = p.id;
+  }
+  return true;
+}
+// everything the guards currently see p doing
+function witness(w, p, level, kind) {
+  const seen = [];
+  for (const g of w.guards) if (guardSees(w, g, p)) { if (markSuspect(w, g, p, level, kind)) seen.push(g); else seen.push(g); }
+  return seen;
+}
+// position based: a guard sees p standing somewhere they should not be
+function scanNotice(w, p) {
+  const lvl = trespassLevel(w, p); if (!lvl) return;
+  for (const g of w.guards) {
+    if (!guardSees(w, g, p)) continue;
+    if (p.wearing) { const d = sightDist(w, g, ptile(w, p)); if (!(d <= 1 && w.rng() < 0.35)) continue; }
+    markSuspect(w, g, p, lvl, lvl === 'danger' ? 'out of cell after lights out' : 'trespass');
+  }
+}
+function cameraSees(w, p) {
+  if (w.powerOff > 0 || w.camsOff > 0 || p.hidden) return null;
+  const pt = ptile(w, p); if (!tileLit(w, pt)) return null;
+  for (const c of w.map.cams) if (pathDist(w, c, pt, CFG.CAMERA_RANGE) <= CFG.CAMERA_RANGE) return c;
+  return null;
+}
+
+// ----- noise: guards only react to suspicious noise, so daytime footsteps in allowed rooms are ignored -----
+function emitNoise(w, x, y, radius, source, label, suspicious) {
+  if (radius <= 0) return;
+  const src = tileAt(w.map, x, y), dist = reach(w, src, radius, false);
+  w.fx.push({ x, y, r: radius, label: label || 'noise', round: w.round, id: w.fx.length });
+  if (w.fx.length > 80) w.fx.splice(0, 40);
+  if (suspicious && !(source && source.kind === 'guard')) for (const g of w.guards) {
+    if (g.ko > 0 || g.dead || g.off || !['patrol', 'post', 'investigate', 'search'].includes(g.state)) continue;
+    const d = dist.get(g.x + ',' + g.y); if (d === undefined || d > radius) continue;
+    g.dest = { x, y }; g.state = 'investigate'; g.wait = 0;
+  }
+  for (const p of w.players) {
+    if (p.status !== 'free' || (source && source.kind === 'player' && source.id === p.id)) continue;
+    const d = dist.get(p.x + ',' + p.y);
+    if (d !== undefined && d <= Math.min(radius, CFG.HEAR + (radius > 4 ? 3 : 0))) p.heard.push({ x, y, round: w.round, label: label || 'noise' });
+  }
+}
+// is this noise worth a guard's attention?
+function noiseSus(w, p, loud) { return !!loud || restricted(w, p, ptile(w, p)); }
+
+// ===== engine2.js (v2) : prisoner actions I (movement, loot, craft, stash, locks, alarms) =====
+const has = (p, it, n = 1) => (p.items[it] || 0) >= n;
+const addItem = (p, it, n = 1) => { p.items[it] = (p.items[it] || 0) + n; };
+const takeItem = (p, it, n = 1) => { p.items[it] = (p.items[it] || 0) - n; if (p.items[it] <= 0) delete p.items[it]; };
+const guardsAt = (w, x, y) => w.guards.filter(g => g.x === x && g.y === y && !g.off);
+const playersAt = (w, x, y, except) => w.players.filter(p => p.x === x && p.y === y && p.status === 'free' && p.id !== except);
+const itemName = it => ITEMS[it].name;
+const fail = msg => ({ ok: false, msg });
+const okk = msg => ({ ok: true, msg });
+const anim = (w, k, id, x, y) => w.anim.push({ k, id, x, y });
+
+function weaponOf(p) {
+  if (has(p, 'pistol') && has(p, 'ammo')) return { id: 'pistol', dmg: 3, ranged: 2, lethal: 0.6 };
+  if (has(p, 'shiv')) return { id: 'shiv', dmg: 2, lethal: 0.55 };
+  if (has(p, 'baton')) return { id: 'baton', dmg: 2, lethal: 0 };
+  return { id: 'fists', dmg: 1, lethal: 0 };
+}
+function rollLoot(w, type) {
+  const table = LOOT[type]; if (!table) return null;
+  const tot = table.reduce((a, r) => a + r[1], 0); let r = w.rng() * tot;
+  for (const [it, wt, q] of table) { r -= wt; if (r <= 0) return it ? [it, Array.isArray(q) ? rint(w.rng, q[0], q[1]) : q] : null; }
+  return null;
+}
+// rooms are locked as a whole. Cells that are not yours are also locked at night.
+function roomLocked(w, room, p) {
+  if (!room) return false;
+  if (room.locked) return true;
+  return room.type === 'cell' && isNight(w) && p && room.owner !== p.id && room.openUntil < w.round;
+}
+function canEnter(w, p, from, to) {
+  if (!neighbors(w.map, from).includes(to)) return false;
+  return !(to.room && to.room !== from.room && roomLocked(w, to.room, p));
+}
+function lockWhy(w, p, to) { return to.room && to.room.type === 'cell' && !to.room.locked ? 'That cell is locked for the night. Pick the lock.' : (to.name + ' is locked. You need a lockpick or a keycard.'); }
+
+function canAct(w, p, ap) {
+  if (w.over) return 'The game is over.';
+  if (p.pending) return 'Deal with what is in front of you first.';
+  if (w.phase !== 'players' || w.cur !== p.id) return 'Not your turn.';
+  if (p.status !== 'free') return 'You are out of action.';
+  if (p.ap < ap) return 'Not enough AP.';
+  return null;
+}
+const COST = { move: 1, run: 2, sneakattack: 2, cutfence: 2, end: 0, sleep: 0, buy: 0, sell: 0, intel: 0, route: 0, stashmove: 0, resolve: 0 };
+function actCost(a) { return a.t === 'move' ? (a.sneak ? 2 : 1) : (COST[a.t] !== undefined ? COST[a.t] : 1); }
+
+function act(w, pid, a) {
+  const p = w.players[pid];
+  if (a.t === 'resolve') return resolvePending(w, pid, a);
+  const apCost = actCost(a);
+  if (a.t !== 'end' && a.t !== 'sleep') { const err = canAct(w, p, apCost); if (err) return fail(err); }
+  else if (p.pending || w.phase !== 'players' || w.cur !== p.id || w.over) return fail(p.pending ? 'Deal with what is in front of you first.' : 'Not your turn.');
+  let res; const t = ptile(w, p);
+  switch (a.t) {
+    case 'move': res = doMove(w, p, t, a); break;
+    case 'run': res = doRun(w, p, t, a); break;
+    case 'hide': res = p.hidden ? fail('You are already hidden.') : (p.hidden = true, okk('You slip out of sight. ' + coverNote(t))); break;
+    case 'loot': res = doLoot(w, p, t); break;
+    case 'salvage': res = doSalvage(w, p, t); break;
+    case 'work': res = doWork(w, p, t); break;
+    case 'craft': res = doCraft(w, p, t, a.out); break;
+    case 'trade': res = doTradeOpen(w, p, a.nid); break;
+    case 'buy': res = doBuy(w, p, a.item); break;
+    case 'sell': res = doSell(w, p, a.item); break;
+    case 'intel': res = doIntel(w, p, a.kind); break;
+    case 'route': res = doRoute(w, p, a.slot); break;
+    case 'bribe': res = doBribe(w, p, a); break;
+    case 'buykey': res = doBuyKey(w, p, a.gid); break;
+    case 'unlock': res = doUnlock(w, p, t, a.rid); break;
+    case 'hack': res = doHack(w, p, t); break;
+    case 'power': res = doPower(w, p, t); break;
+    case 'attack': case 'sneakattack': res = doAttack(w, p, t, a); break;
+    case 'give': res = doGive(w, p, a); break;
+    case 'use': res = doUse(w, p, a.item); break;
+    case 'stash': res = (t.room && t.room === cellOf(w, p)) ? (p.shop = 'stash', okk('You open your hiding place.')) : fail('Only your own cell has your stash.'); break;
+    case 'stashmove': res = doStashMove(w, p, t, a); break;
+    case 'dummy': res = doDummy(w, p, t); break;
+    case 'hire': res = doHire(w, p, a); break;
+    case 'escape': case 'cutfence': res = doEscape(w, p, t, a.t); break;
+    case 'sleep': res = doSleep(w, p); break;
+    case 'end': p.ap = 0; endTurn(w); return okk('You end your turn.');
+    default: return fail('Unknown action.');
+  }
+  if (!res.ok) return res;
+  p.ap = Math.max(0, p.ap - apCost);
+  const keepShop = ['buy', 'sell', 'intel', 'route', 'trade', 'stash', 'stashmove'].includes(a.t);
+  if (!keepShop) p.shop = null;
+  if (res.msg) addLog(w, res.msg, p.x, p.y, 'you', p.id);
+  if (p.status === 'free') { updateMemory(w, p); if (!p.asleep) scanNotice(w, p); }
+  refreshSpotted(w);
+  checkEnd(w);
+  if (!w.over && !p.pending && w.phase === 'players' && w.cur === p.id && a.t !== 'sleep' && (p.status !== 'free' || p.ap <= 0)) endTurn(w);
+  return res;
+}
+const coverNote = t => coverOf(t) === 'open' ? 'Guards within 2 tiles may still spot you.' : 'Only a guard on this very tile might find you.';
+
+function doMove(w, p, t, a) {
+  const n = tileAt(w.map, a.x, a.y);
+  if (!n || !neighbors(w.map, t).includes(n)) return fail("You can't go that way.");
+  if (n.room && n.room !== t.room && roomLocked(w, n.room, p)) return fail(lockWhy(w, p, n));
+  p.x = n.x; p.y = n.y; p.hidden = false; p.stats.moves++; anim(w, 'p', p.id, n.x, n.y);
+  emitNoise(w, n.x, n.y, a.sneak ? CFG.NOISE.sneak : CFG.NOISE.move, { kind: 'player', id: p.id }, a.sneak ? 'sneaking' : 'footsteps', noiseSus(w, p, false));
+  return okk(null);
+}
+function pathTo(w, p, from, to, maxLen) { // shortest legal path for a prisoner, up to maxLen steps
+  const prev = new Map([[tkey(from), null]]); const q = [from];
+  while (q.length) {
+    const c = q.shift();
+    for (const n of neighbors(w.map, c)) {
+      const k = tkey(n); if (prev.has(k)) continue;
+      if (n.room && n.room !== c.room && roomLocked(w, n.room, p)) continue;
+      prev.set(k, c);
+      if (n === to) { const path = []; let cur = n; while (cur !== from) { path.unshift(cur); cur = prev.get(tkey(cur)); } return path.length <= maxLen ? path : null; }
+      q.push(n);
+    }
+  }
+  return null;
+}
+function doRun(w, p, t, a) { // up to 3 tiles for 2 AP, loud and suspicious but not a crime in itself
+  const to = tileAt(w.map, a.x, a.y); if (!to) return fail('Pick a tile to run to.');
+  const path = pathTo(w, p, t, to, 3); if (!path || path.length < 2) return fail('Running needs a clear route of 2 to 3 tiles.');
+  p.hidden = false;
+  for (const s of path) { p.x = s.x; p.y = s.y; anim(w, 'p', p.id, s.x, s.y); witness(w, p, 'sus', 'running'); }
+  p.stats.moves += path.length;
+  emitNoise(w, p.x, p.y, CFG.NOISE.run, { kind: 'player', id: p.id }, 'running', true);
+  return okk('You sprint ' + path.length + ' tiles. It is loud.');
+}
+function lootSource(t) { return t.room || t; }
+function doLoot(w, p, t) {
+  const body = guardsAt(w, t.x, t.y).find(g => (g.ko > 0 || g.dead) && (g.carry.baton || g.carry.keycard || g.carry.cigs));
+  p.hidden = false;
+  if (body) {
+    const got = []; for (const [it, q] of Object.entries(body.carry)) if (q) { addItem(p, it, q); got.push(q + ' ' + itemName(it)); body.carry[it] = 0; }
+    emitNoise(w, t.x, t.y, CFG.NOISE.loot, { kind: 'player', id: p.id }, 'rustling', noiseSus(w, p, false));
+    witness(w, p, 'sus', 'looting a guard'); return okk('You go through ' + body.name + "'s pockets: " + got.join(', ') + '.');
+  }
+  const src = lootSource(t); const room = t.room;
+  if (room && room.type === 'cell') {
+    if (room.owner === p.id) return fail('Your own cell has no loot. Use your stash.');
+    if (room.owner !== null) return fail("You can't rob a fellow prisoner's bunk. Their stash is locked up tight.");
+  }
+  if (!(src.spots > 0)) return fail('There is nothing left to steal here.');
+  const occ = room && room.type === 'cell' ? w.npcs.find(n => n.cellRoom === room && n.x === t.x && n.y === t.y && n.ko <= 0) : null;
+  src.spots--; p.stats.loots++;
+  emitNoise(w, t.x, t.y, CFG.NOISE.steal, { kind: 'player', id: p.id }, 'rustling', noiseSus(w, p, false));
+  witness(w, p, 'sus', 'stealing');
+  if (occ) { npcTurnHostile(w, occ, p, 'You are robbing his bunk!'); }
+  const r = rollLoot(w, ROOMS[t.type].loot);
+  if (!r) return okk('You search the ' + t.name.toLowerCase() + ' and find nothing.' + (occ ? ' ' + occ.name + ' lunges at you!' : ''));
+  addItem(p, r[0], r[1]);
+  return okk('You ' + (room && room.type === 'cell' ? 'steal ' : 'find ') + r[1] + ' ' + itemName(r[0]) + '.' + (occ ? ' ' + occ.name + ' lunges at you!' : ''));
+}
+function doSalvage(w, p, t) {
+  if (!ROOMS[t.type].salvage) return fail('Nothing to salvage here.');
+  const r = t.room; if (!r || r.salv <= 0) return fail('You have stripped this place of anything useful.');
+  r.salv--; addItem(p, 'scrap', 1); emitNoise(w, t.x, t.y, 2, { kind: 'player', id: p.id }, 'clanking', noiseSus(w, p, false)); p.hidden = false;
+  return okk('You salvage some scrap.');
+}
+function doWork(w, p, t) {
+  if (!ROOMS[t.type].work) return fail('There is no work detail here.');
+  if (isNight(w)) return fail('No work at night.');
+  const k = t.room.id; if ((p.workCd[k] || 0) > w.round) return fail('You already pulled a shift here. Come back later.');
+  p.workCd[k] = w.round + 6; addItem(p, 'cigs', 1); p.hidden = false; return okk('You work a shift and earn 1 cigarette.');
+}
+function doCraft(w, p, t, out) {
+  if (t.type !== 'cell' && t.type !== 'workshop') return fail('You need a cell or the workshop to craft.');
+  const r = RECIPES.find(r => r.out === out); if (!r) return fail('Unknown recipe.');
+  for (const [it, q] of Object.entries(r.cost)) if (!has(p, it, q)) return fail('You need ' + q + ' ' + itemName(it) + '.');
+  for (const [it, q] of Object.entries(r.cost)) takeItem(p, it, q);
+  addItem(p, out, 1); return okk('You craft a ' + itemName(out) + '.');
+}
+function doDummy(w, p, t) {
+  if (!t.room || t.room !== cellOf(w, p)) return fail('Prop the dummy up in your own cell.');
+  if (t.room.dummy) return fail('A dummy is already in your bed.');
+  if (!has(p, 'dummy')) return fail('You need a bed dummy. Craft or buy one.');
+  takeItem(p, 'dummy'); t.room.dummy = true; return okk('You shape a lumpy "sleeper" under the blanket.');
+}
+function doStashMove(w, p, t, a) {
+  if (p.shop !== 'stash' || !t.room || t.room !== cellOf(w, p)) return fail('Open your stash first.');
+  const st = t.room.stash, n = a.qty || 1;
+  if (a.dir === 'in') { if (!has(p, a.item, n)) return fail('You do not have that.'); takeItem(p, a.item, n); st[a.item] = (st[a.item] || 0) + n; }
+  else { if ((st[a.item] || 0) < n) return fail('Not in the stash.'); st[a.item] -= n; if (st[a.item] <= 0) delete st[a.item]; addItem(p, a.item, n); }
+  return okk(null);
+}
+function doGive(w, p, a) {
+  const q = w.players[a.to]; if (!q || q.status !== 'free' || q.x !== p.x || q.y !== p.y) return fail('They are not here.');
+  const n = a.qty || 1; if (!has(p, a.item, n)) return fail('You do not have that.');
+  takeItem(p, a.item, n); addItem(q, a.item, n); return okk('You hand ' + n + ' ' + itemName(a.item) + ' to ' + q.name + '.');
+}
+function doUse(w, p, item) {
+  if (!has(p, item)) return fail('You do not have that.');
+  if (item === 'pills') { if (p.hp >= CFG.HP_PRISONER) return fail('You are not hurt.'); takeItem(p, 'pills'); p.hp = Math.min(CFG.HP_PRISONER, p.hp + 2); return okk('You swallow a painkiller (+2 HP).'); }
+  if (item === 'uniform') { p.wearing = !p.wearing; return okk(p.wearing ? 'You pull on the guard uniform.' : 'You take the uniform off.'); }
+  if (item === 'meth') { takeItem(p, 'meth'); p.meth = { state: 'high', left: CFG.METH.high }; p.ap = CFG.AP + 1; p.apBonus = true; return okk('Your heart hammers. 3 AP for ' + CFG.METH.high + ' turns. The crash will hurt.'); }
+  return fail('Nothing happens.');
+}
+function doSleep(w, p) {
+  if (!isNight(w)) return fail('You can only sleep through the night.');
+  if (!inOwnCell(w, p)) return fail('Get back to your own cell first.');
+  p.asleep = true; p.hidden = false; p.ap = 0; addLog(w, p.name + ' turns in for the night.', null, null, 'info', p.id);
+  endTurn(w); return okk(null);
+}
+
+// ----- locks and alarms -----
+function raiseAlarm(w, p, room, tile) {
+  raiseAlert(w, 1, tile.x, tile.y);
+  addLog(w, 'ALARM: the ' + room.name + ' door alarm trips!', tile.x, tile.y, 'alert');
+  notify(w, null, 'A door alarm is ringing at the ' + room.name + '.', 'bad');
+  emitNoise(w, tile.x, tile.y, CFG.NOISE.alarm, { kind: 'player', id: p.id }, 'alarm', true);
+}
+function doUnlock(w, p, t, rid) {
+  const room = w.map.rooms[rid]; if (!room) return fail('Nothing to unlock.');
+  const door = room.tiles.find(rt => neighbors(w.map, t).includes(rt)); if (!door) return fail('You must stand next to the door.');
+  const nightCell = room.type === 'cell' && !room.locked;
+  if (!room.locked && !(nightCell && roomLocked(w, room, p))) return fail('It is not locked.');
+  const open = () => { if (nightCell) room.openUntil = w.round + timeOf(w).left; else room.locked = false; };
+  p.hidden = false;
+  if (has(p, 'keycard')) { open(); return okk('You swipe the keycard. The ' + room.name + ' door clicks open.'); }
+  if (!has(p, 'lockpick')) return fail('You need a lockpick or a keycard.');
+  emitNoise(w, door.x, door.y, CFG.NOISE.lockpick, { kind: 'player', id: p.id }, 'scraping', true);
+  witness(w, p, 'sus', 'lockpicking');
+  let note = '';
+  if (room.alarm) {
+    if (has(p, 'jammer')) { takeItem(p, 'jammer'); note = ' The jammer keeps the alarm quiet.'; }
+    else if (p.alarmOff.has(timeOf(w).slot)) note = ' The bribed alarm stays silent.';
+    else raiseAlarm(w, p, room, door);
+  }
+  if (w.rng() < 0.65) { open(); return okk('The lock gives way. ' + room.name + ' is open.' + note); }
+  if (w.rng() < 0.3) { takeItem(p, 'lockpick'); return okk('Your lockpick snaps in the lock.' + note); }
+  return okk('You fumble the lock. It holds.' + note);
+}
+function doHack(w, p, t) {
+  if (!(t.room && ROOMS[t.type].terminal)) return fail('There is no terminal here.');
+  if (!has(p, 'usb') && !has(p, 'keycard')) return fail('You need a Hacker USB or a keycard.');
+  w.camsOff = CFG.HACK_TURNS; emitNoise(w, p.x, p.y, CFG.NOISE.hack, { kind: 'player', id: p.id }, 'keys', true); p.hidden = false;
+  return okk('The cameras go blind for ' + CFG.HACK_TURNS + ' rounds.');
+}
+function doPower(w, p, t) {
+  if (!(t.room && ROOMS[t.type].breaker)) return fail('There is no breaker panel here.');
+  w.powerOff = CFG.POWER_TURNS; p.hidden = false;
+  emitNoise(w, p.x, p.y, CFG.NOISE.power, { kind: 'player', id: p.id }, 'clunk', true);
+  raiseAlert(w, 1, p.x, p.y, 'The power fails. Lights and cameras are down.'); notify(w, null, 'Blackout! The power just failed.', 'bad');
+  for (const g of w.guards) if (g.ko <= 0 && !g.dead && !g.off && ['patrol', 'post', 'investigate', 'search'].includes(g.state)) { g.state = 'investigate'; g.dest = { x: p.x, y: p.y }; }
+  return okk('You throw the main breaker. Everything goes dark.');
+}
+function refreshSpotted(w) {
+  for (const p of w.players) {
+    p.spotted = []; if (p.status !== 'free') continue;
+    const lvl = p.asleep ? null : trespassLevel(w, p);
+    for (const g of w.guards) if (guardSees(w, g, p, true)) p.spotted.push({ gid: g.id, level: lvl, hunting: g.state === 'hunt' && g.target === p.id });
+  }
+}
+
+// ===== engine2b.js (v2) : trade, bribes, confrontations, violence, escape, strikes, turn flow =====
+const sellPrice = it => Math.max(1, Math.floor(ITEMS[it].value * 0.5));
+function shopNpc(w, p) {
+  if (typeof p.shop !== 'string' || !p.shop.startsWith('npc:')) return null;
+  const n = w.npcs.find(n => n.id === +p.shop.slice(4));
+  return (n && n.x === p.x && n.y === p.y && n.ko <= 0 && !n.off) ? n : null;
+}
+function npcStock(n) { return n.role === 'inmate' ? n.stock : (VENDORS[n.role].sells || {}); }
+function doTradeOpen(w, p, nid) {
+  const n = w.npcs.find(n => n.id === nid);
+  if (!n || n.x !== p.x || n.y !== p.y || n.off || n.ko > 0) return fail('Nobody to trade with.');
+  if (n.hostile != null) return fail(n.name + ' wants to fight, not trade.');
+  p.shop = 'npc:' + n.id; return okk('You start talking business with ' + n.name + '.');
+}
+function tradeWitness(w, p, item) { if (isContraband(item)) witness(w, p, 'sus', 'dealing contraband'); }
+function doBuy(w, p, item) {
+  const n = shopNpc(w, p); if (!n) return fail('Open trading first.');
+  const price = npcStock(n)[item]; if (!price) return fail('Not for sale.');
+  if (!has(p, 'cigs', price)) return fail('You need ' + price + ' cigarettes.');
+  takeItem(p, 'cigs', price); addItem(p, item, 1); p.hidden = false; tradeWitness(w, p, item);
+  if (n.role === 'inmate') { delete n.stock[item]; }
+  return okk('You buy a ' + itemName(item) + ' for ' + price + '.');
+}
+function doSell(w, p, item) {
+  const n = shopNpc(w, p); if (!n || n.role !== 'dealer') return fail('Only the dealer buys goods.');
+  if (item === 'cigs' || !has(p, item)) return fail("You can't sell that.");
+  const v = sellPrice(item); takeItem(p, item, 1); addItem(p, 'cigs', v); p.hidden = false; tradeWitness(w, p, item);
+  return okk('You sell a ' + itemName(item) + ' for ' + v + '.');
+}
+function doIntel(w, p, kind) {
+  const n = shopNpc(w, p); if (!n || n.role !== 'fixer') return fail('Talk to the fixer first.');
+  if (!has(p, 'cigs', CFG.INTEL_PRICE)) return fail('Intel costs ' + CFG.INTEL_PRICE + ' cigarettes.');
+  takeItem(p, 'cigs', CFG.INTEL_PRICE);
+  if (kind === 'cams') { p.intel.cams = true; return okk('The fixer marks every camera on your map.'); }
+  if (kind === 'corrupt') { p.intel.corrupt = true; return okk('The fixer tells you which guards take money.'); }
+  p.intel.seeUntil = w.round + 3; return okk('The fixer whispers where every guard is right now.');
+}
+function doRoute(w, p, slot) {
+  const n = shopNpc(w, p); if (!n || n.role !== 'informant') return fail('Talk to the informant first.');
+  if (!/^[0-6]-(morning|day|evening|night)$/.test(slot || '')) return fail('Pick a day and time.');
+  if (p.routeIntel.has(slot)) return fail('You already have those patrol routes.');
+  if (!has(p, 'cigs', CFG.ROUTE_PRICE)) return fail('Patrol routes cost ' + CFG.ROUTE_PRICE + ' cigarettes.');
+  takeItem(p, 'cigs', CFG.ROUTE_PRICE); p.routeIntel.add(slot);
+  return okk('The informant sells you the guard patrol routes for ' + slotLabel(slot) + '.');
+}
+function doHire(w, p, a) {
+  const n = w.npcs.find(n => n.id === a.nid); const room = w.map.rooms[a.rid];
+  if (!n || n.role !== 'inmate' || n.x !== p.x || n.y !== p.y) return fail('Nobody here to hire.');
+  if (!room || !['common', 'dining', 'court', 'showers', 'library', 'workshop', 'laundry', 'kitchen'].includes(room.type)) return fail('Pick a public room for the fight.');
+  const price = 8; if (!has(p, 'cigs', price)) return fail('A brawl costs ' + price + ' cigarettes.');
+  if (w.rng() < 0.2) return okk(n.name + ' shrugs. "Not for that money."');
+  takeItem(p, 'cigs', price); const slot = nextSlot(w, a.phase);
+  w.contracts.push({ nid: n.id, rid: room.id, slot, started: false, ended: false, by: p.id });
+  p.hidden = false; return okk(n.name + ' agrees to start a fight in the ' + room.name + ' on ' + slotLabel(slot) + '.');
+}
+
+// ----- bribes -----
+const bribePrice = (w, g, purpose) => Math.max(1, Math.round(g.price * BRIBE[purpose].mult * (1 + 0.25 * w.alert)));
+function doBribe(w, p, a) {
+  const g = w.guards.find(g => g.id === a.gid);
+  if (!g || g.ko > 0 || g.dead || g.off) return fail('No one to bribe.');
+  if (pathDist(w, ptile(w, p), unitTile(w, g), 1) > 1) return fail('Too far away.');
+  if (!BRIBE[a.purpose] || a.purpose === 'release') return fail('Choose what you are bribing him for.');
+  const res = attemptBribe(w, p, g, a.purpose, a.offer, a.phase); if (!res.ok) return res;
+  for (const o of w.guards) if (o !== g && guardSees(w, o, p)) markSuspect(w, o, p, 'sus', 'bribing a guard');
+  return res;
+}
+function attemptBribe(w, p, g, purpose, offerKey, phase) {
+  const f = (OFFERS.find(o => o.k === offerKey) || OFFERS[1]).f, price = bribePrice(w, g, purpose), amount = Math.round(price * f);
+  if (!has(p, 'cigs', amount)) return fail('You need ' + amount + ' cigarettes for that offer.');
+  if (purpose === 'alarm' && !CFG.PHASES.some(ph => ph.id === phase)) return fail('Pick a time of day.');
+  p.hidden = false;
+  if (!g.corrupt) {
+    if (w.rng() < 0.6) { const r = arrestPlayer(w, g, p, 'attempted bribery'); return okk(g.name + ' will not be bought. ' + r); }
+    markSuspect(w, g, p, 'sus', 'bribe attempt'); return okk(g.name + ' refuses and gives you a hard look.');
+  }
+  const r = w.rng(); const out = f >= 1.4 ? 'accept' : f >= 1 ? (r < 0.9 ? 'accept' : 'counter') : (r < 0.45 ? 'accept' : r < 0.85 ? 'counter' : 'strike');
+  if (out === 'accept') { takeItem(p, 'cigs', amount); return applyBribe(w, p, g, purpose, phase, amount); }
+  if (out === 'counter') {
+    const counter = Math.ceil(price * (1.2 + w.rng() * 0.35));
+    p.pending = { type: 'counter', gid: g.id, purpose, phase, price: counter, ctx: w.paused ? 'confront' : 'normal' };
+    return okk(g.name + ' wants more: ' + counter + ' cigarettes.');
+  }
+  const res = arrestPlayer(w, g, p, 'insulting bribe'); return okk(g.name + ' is insulted by the offer. ' + res);
+}
+function applyBribe(w, p, g, purpose, phase, amount) {
+  if (purpose === 'blind') { g.blind[p.id] = { until: w.round + 16, charges: 1 }; return okk('You slip ' + g.name + ' ' + amount + ' cigarettes. He will look the other way next time.'); }
+  if (purpose === 'alarm') { const slot = nextSlot(w, phase); p.alarmOff.add(slot); return okk(g.name + ' takes ' + amount + ' cigarettes and promises the door alarms are "broken" on ' + slotLabel(slot) + '.'); }
+  delete g.sus[p.id]; g.state = g.post ? 'post' : 'patrol'; g.target = null; g.wait = 1;
+  return okk(g.name + ' pockets ' + amount + ' cigarettes and waves you on.');
+}
+function doBuyKey(w, p, gid) {
+  const g = w.guards.find(g => g.id === gid); const bl = g && g.blind[p.id];
+  if (!g || !g.corrupt || !bl) return fail('Bribe the guard first.');
+  const price = 12 + g.price * 2; if (!has(p, 'cigs', price)) return fail('A keycard costs ' + price + ' cigarettes.');
+  takeItem(p, 'cigs', price); addItem(p, 'keycard', 1); return okk(g.name + ' "loses" a keycard. It costs you ' + price + '.');
+}
+
+// ----- pending decisions: confrontations, counteroffers, extortion -----
+function finishPending(w) { if (w.paused && !w.players.some(p => p.pending)) { w.paused = null; continueGuards(w); } }
+function resolvePending(w, pid, a) {
+  const p = w.players[pid], pd = p.pending; if (!pd) return fail('Nothing to resolve.');
+  const g = w.guards.find(g => g.id === pd.gid); let res;
+  if (pd.type === 'confront') {
+    if (!g || g.ko > 0 || g.dead) { p.pending = null; finishPending(w); return okk(null); }
+    p.pending = null;
+    if (a.c === 'cooperate') res = cooperate(w, p, g);
+    else if (a.c === 'bribe') {
+      res = attemptBribe(w, p, g, 'release', a.offer, null);
+      if (!res.ok) { p.pending = pd; return res; }
+      if (!p.pending && g.sus[p.id] && p.status === 'free') res = okk(res.msg + ' ' + cooperate(w, p, g).msg);
+    } else if (a.c === 'attack') res = confrontAttack(w, p, g);
+    else if (a.c === 'run') res = confrontRun(w, p, g);
+    else { p.pending = pd; return fail('Choose how to react.'); }
+  } else if (pd.type === 'counter') {
+    p.pending = null;
+    if (a.c === 'pay' && g && has(p, 'cigs', pd.price)) { takeItem(p, 'cigs', pd.price); res = applyBribe(w, p, g, pd.purpose, pd.phase, pd.price); }
+    else if (pd.ctx === 'confront' && g) res = okk('You decline. ' + cooperate(w, p, g).msg);
+    else res = okk('You decline his price.');
+  } else if (pd.type === 'extort') {
+    p.pending = null; const n = w.npcs.find(n => n.id === pd.nid);
+    if (a.c === 'pay' && has(p, 'cigs', pd.amount)) { takeItem(p, 'cigs', pd.amount); res = (w.rng() < 0.15 && n) ? (npcBetray(w, n, p), okk(n.name + ' takes the cigarettes... and sells you out anyway!')) : okk(n.name + ' pockets the cigarettes. "I saw nothing."'); }
+    else res = (w.rng() < 0.5 && n) ? (npcBetray(w, n, p), okk('You refuse. ' + n.name + ' runs off to tell the guards!')) : okk('You refuse. ' + n.name + ' spits and walks away.');
+  } else return fail('Nothing to resolve.');
+  if (res.msg) addLog(w, res.msg, p.x, p.y, 'you', p.id);
+  refreshSpotted(w); checkEnd(w);
+  if (!p.pending) finishPending(w);
+  if (!w.over && w.phase === 'players' && w.cur === p.id && p.status !== 'free' && !p.pending) endTurn(w);
+  return res;
+}
+function cooperate(w, p, g) {
+  const taken = Object.keys(p.items).filter(isContraband);
+  const names = taken.map(i => itemName(i)); taken.forEach(i => delete p.items[i]);
+  if (taken.includes('uniform')) p.wearing = false;
+  clearSuspicion(w, g, p); g.state = g.post ? 'post' : 'patrol'; g.target = null; g.wait = 1;
+  const msg = taken.length ? g.name + ' searches you and confiscates: ' + names.join(', ') + '. No strike.' : g.name + ' pats you down, finds nothing, and lets you go with a warning.';
+  notify(w, p.id, msg, taken.length ? 'warn' : 'good'); return okk(msg);
+}
+const clearSuspicion = (w, g, p) => { delete g.sus[p.id]; };
+function confrontAttack(w, p, g) {
+  p.hidden = false; const t = ptile(w, p); const wp = weaponOf(p);
+  g.state = 'hunt'; g.target = p.id; const r = attackGuard(w, p, t, g, wp, false); return r.ok ? r : okk('You swing at ' + g.name + ' but miss your chance.');
+}
+function confrontRun(w, p, g) {
+  const from = unitTile(w, g); let steps = 0; p.hidden = false;
+  for (let i = 0; i < 2; i++) {
+    const t = ptile(w, p); const opts = neighbors(w.map, t).filter(n => canEnter(w, p, t, n) && !(n.x === g.x && n.y === g.y));
+    if (!opts.length) break;
+    opts.sort((a, b) => Math.abs(b.x - from.x) + Math.abs(b.y - from.y) - Math.abs(a.x - from.x) - Math.abs(a.y - from.y));
+    p.x = opts[0].x; p.y = opts[0].y; anim(w, 'p', p.id, p.x, p.y); steps++;
+  }
+  emitNoise(w, p.x, p.y, CFG.NOISE.run, { kind: 'player', id: p.id }, 'running', true);
+  markSuspect(w, g, p, 'danger', 'fled from a guard'); witness(w, p, 'danger', 'fleeing');
+  return okk('You bolt! ' + g.name + ' shouts and gives chase.');
+}
+
+// ----- violence -----
+function doAttack(w, p, t, a) {
+  const wp = weaponOf(p), sneak = a.t === 'sneakattack';
+  if (a.kind === 'npc') return attackNpc(w, p, t, a, wp, sneak);
+  if (a.kind === 'guard') return attackGuard(w, p, t, w.guards.find(g => g.id === a.id), wp, sneak);
+  if (w.mode !== 'race') return fail('You are on the same team.');
+  const q = w.players[a.id]; if (!q || q.status !== 'free' || q.x !== p.x || q.y !== p.y) return fail('No target here.');
+  const dark = !tileLit(w, t); const bonus = sneak && (p.hidden || dark); p.loudRound = w.round; p.hidden = false;
+  q.hp -= bonus ? 3 : wp.dmg; emitNoise(w, t.x, t.y, CFG.NOISE.fight, { kind: 'player', id: p.id }, 'fighting', true);
+  witness(w, p, 'danger', 'fighting');
+  if (q.hp <= 0) { q.hp = 2; q.ko = 3; const st = q.items.cigs || 0; if (st) { addItem(p, 'cigs', st); delete q.items.cigs; } return okk('You knock ' + q.name + ' out and take ' + st + ' cigarettes.'); }
+  return okk('You hit ' + q.name + '. They have ' + q.hp + ' HP.');
+}
+function incapacitate(w, g, lethal) {
+  if (lethal) { g.dead = true; g.ko = 0; g.state = 'dead'; } else { g.ko = 10; g.hp = 2; g.state = 'ko'; }
+  g.found = false; g.sus = {}; g.target = null;
+}
+function attackGuard(w, p, t, g, wp, sneak) {
+  if (!g || g.ko > 0 || g.dead || g.off) return fail('No target.');
+  const d = pathDist(w, t, unitTile(w, g), 2), ranged = wp.ranged && d > 0 && d <= wp.ranged && !sneak;
+  if (d !== 0 && !ranged) return fail('Too far. Melee needs the same tile.');
+  const unaware = !['hunt', 'sus'].includes(g.state);
+  if (sneak) {
+    if (d !== 0) return fail('Sneak attacks need the same tile.');
+    if (!unaware || !(p.hidden || !tileLit(w, t))) return fail('He is too alert for a takedown. Hide first or use the dark.');
+    if (w.rng() < 0.15) { p.loudRound = w.round; p.hidden = false; g.state = 'hunt'; g.target = p.id; emitNoise(w, t.x, t.y, 4, null, 'scuffle', true); markSuspect(w, g, p, 'danger', 'attacked a guard'); return okk('The takedown fails and ' + g.name + ' shouts!'); }
+    const lethal = wp.id === 'shiv'; incapacitate(w, g, lethal); p.hidden = false;
+    const seen = violenceSeen(w, p, g); return okk('You ' + (lethal ? 'knife ' + g.name + ' silently.' : 'choke ' + g.name + ' out silently.') + (seen ? ' Someone saw it!' : ' Nobody saw it.'));
+  }
+  p.loudRound = w.round; p.hidden = false; if (wp.id === 'pistol') takeItem(p, 'ammo');
+  emitNoise(w, t.x, t.y, wp.id === 'pistol' ? CFG.NOISE.gun : CFG.NOISE.fight, { kind: 'player', id: p.id }, wp.id === 'pistol' ? 'gunshot' : 'fighting', true);
+  const kill = wp.lethal > 0 && w.rng() < Math.min(0.9, wp.lethal * (unaware ? 1.3 : 1)); let msg;
+  if (kill) { incapacitate(w, g, true); msg = 'Your ' + wp.id + ' finds its mark. ' + g.name + ' is dead.'; }
+  else { g.hp -= wp.dmg; if (g.hp <= 0) { incapacitate(w, g, false); msg = g.name + ' goes down, out cold.'; } else msg = 'You hit ' + g.name + ' with your ' + wp.id + '. ' + g.hp + ' HP left.'; }
+  const seen = violenceSeen(w, p, g); if (!g.dead && g.ko <= 0) { g.state = 'hunt'; g.target = p.id; markSuspect(w, g, p, 'danger', 'attacked a guard'); }
+  return okk(msg + (g.dead || g.ko > 0 ? (seen ? ' Someone saw it!' : ' Nobody saw it.') : ''));
+}
+// guards and inmates who saw the violence treat p as dangerous (red !)
+function violenceSeen(w, p, victim) {
+  let seen = false;
+  for (const o of w.guards) if (o !== victim && guardSees(w, o, p)) { markSuspect(w, o, p, 'danger', 'attacking a guard'); seen = true; }
+  if (npcWitness(w, p, 'attack')) seen = true;
+  return seen;
+}
+
+// ----- escape -----
+function doEscape(w, p, t, kind) {
+  const ex = exitsNear(w.map, t); p.hidden = false;
+  if (kind === 'cutfence') {
+    if (!ex.some(e => e.type === 'fence')) return fail('Stand next to the fence.');
+    if (!has(p, 'wirecutters')) return fail('You need wirecutters to cut the fence.');
+    emitNoise(w, p.x, p.y, CFG.NOISE.fence, { kind: 'player', id: p.id }, 'snapping', true);
+    p.status = 'escaped'; addLog(w, p.name + ' cut through the fence and ran!', p.x, p.y, 'escape'); return okk(null);
+  }
+  if (!ex.some(e => e.type === 'gate')) return fail('Stand in front of the main gate.');
+  if (!has(p, 'keycard')) return fail('The gate needs a keycard.');
+  let blockers = 0;
+  for (const g of w.guards) {
+    if (!guardSees(w, g, p, true)) continue;
+    const bl = g.blind[p.id]; if (bl && bl.until >= w.round && bl.charges > 0) { bl.charges--; continue; }
+    if (p.wearing && !(sightDist(w, g, t) <= 1 && w.rng() < 0.35)) continue;
+    markSuspect(w, g, p, 'danger', 'gate attempt'); blockers++;
+  }
+  if (blockers) return okk('A guard blocks the gate. "Where do you think you are going?"');
+  p.status = 'escaped'; addLog(w, p.name + ' walked out of the main gate!', p.x, p.y, 'escape'); return okk(null);
+}
+
+// ----- strikes (suspicion never costs a strike, only danger does) -----
+function arrestPlayer(w, g, p, why) {
+  const kind = (g && g.sus && g.sus[p.id] && g.sus[p.id].kind) || '';
+  if (w.diff === 'easy' && isNight(w) && !(p.violentRound && w.round - p.violentRound <= 14) && !/attack|fight|gate|ratted|bribe|insult|violen/i.test(kind + ' ' + (why || ''))) { // easy: caught out after lights out is a talking-to, not a strike
+    const c = cellOf(w, p).tiles[0]; p.hidden = false; p.pending = null; p.wanted = false; p.x = c.x; p.y = c.y; p.skip = 1; p.ap = 0; anim(w, 'p', p.id, c.x, c.y);
+    for (const o of w.guards) { delete o.sus[p.id]; if (o.target === p.id && ['hunt', 'sus'].includes(o.state)) { o.state = o.post ? 'post' : 'patrol'; o.target = null; } }
+    const m = 'Caught out after lights out. Easy mode: no strike. The guards march you back to your cell.'; notify(w, p.id, m, 'warn'); return m;
+  }
+  p.strikes++; p.hidden = false; p.loudRound = 0; p.pending = null; p.wanted = false;
+  const cellR = cellOf(w, p), c = cellR.tiles[0];
+  const confiscate = (all) => { // cigarettes are currency and can never be taken
+    const lost = []; for (const it of Object.keys(p.items)) if (it !== 'cigs' && (all || isContraband(it))) { lost.push(it); delete p.items[it]; }
+    for (const it of Object.keys(cellR.stash)) if (it !== 'cigs') { lost.push(it); delete cellR.stash[it]; }
+    if (cellR.dummy) { cellR.dummy = false; lost.push('dummy'); } p.wearing = false; return lost;
+  };
+  let msg;
+  if (p.strikes === 1) {
+    confiscate(false); p.hp = Math.max(2, p.hp - 3); p.x = c.x; p.y = c.y; p.skip = 1; p.ap = 0; p.asleep = false;
+    msg = 'Strike 1 of 3. ' + (g ? g.name : 'The guards') + ' beat you, confiscate your contraband and everything in your cell, and drag you back to it.';
+  } else if (p.strikes === 2) {
+    confiscate(true); p.status = 'solitary'; p.solitary = 3; p.hp = Math.max(3, p.hp); p.x = w.map.solitary.x; p.y = w.map.solitary.y; p.ap = 0; p.asleep = false;
+    msg = 'Strike 2 of 3. Solitary confinement. Everything but your cigarettes is gone.';
+  } else { p.status = 'transferred'; p.ap = 0; msg = 'Strike 3. You are transferred to the high security block. You are out of the game.'; }
+  anim(w, 'p', p.id, p.x, p.y, true);
+  notify(w, p.id, (why ? why[0].toUpperCase() + why.slice(1) + '. ' : '') + msg, 'bad'); addLog(w, p.name + ' gets strike ' + p.strikes + '.', null, null, 'strike', p.id);
+  for (const o of w.guards) { delete o.sus[p.id]; if (o.target === p.id && ['hunt', 'sus'].includes(o.state)) { o.state = o.post ? 'post' : 'patrol'; o.target = null; } }
+  return msg;
+}
+
+// ----- turn flow -----
+function endTurn(w) {
+  for (let i = w.cur + 1; i < w.players.length; i++) if (startPlayerTurn(w, i)) { w.cur = i; return; }
+  runGuardPhase(w);
+}
+function startPlayerTurn(w, i) { // true if the player can act now. Timers tick once per round.
+  const p = w.players[i];
+  if (p.status === 'escaped' || p.status === 'transferred') return false;
+  if (p.tickRound !== w.round) {
+    p.tickRound = w.round; p.blocked = false;
+    if (p.status === 'solitary') { p.solitary--; p.blocked = true; if (p.solitary <= 0) { p.status = 'free'; const c = cellOf(w, p).tiles[0]; p.x = c.x; p.y = c.y; addLog(w, p.name + ' is released from solitary.', null, null, 'info', p.id); } }
+    else if (p.ko > 0) { p.ko--; p.blocked = true; }
+    else if (p.skip > 0) { p.skip--; p.blocked = true; addLog(w, p.name + ' recovers from the beating.', null, null, 'info', p.id); }
+    else if (p.asleep) { if (isNight(w)) p.blocked = true; else p.asleep = false; }
+    if (p.meth) { p.meth.left--; if (p.meth.left <= 0) {
+      if (p.meth.state === 'high') { p.meth = { state: 'crash', left: CFG.METH.crash }; notify(w, p.id, 'The high is over. You crash: only 1 AP for ' + CFG.METH.crash + ' turns.', 'warn'); }
+      else { p.meth = null; notify(w, p.id, 'The crash is over. You feel almost human.', 'good'); } } }
+  }
+  if (p.blocked || p.status !== 'free') return false;
+  p.ap = CFG.AP + (p.meth ? (p.meth.state === 'high' ? 1 : -1) : 0); p.heard = p.heard.filter(h => h.round >= w.round - 1); updateMemory(w, p); return true;
+}
+function firstPlayer(w) { for (let i = 0; i < w.players.length; i++) if (startPlayerTurn(w, i)) { w.cur = i; return true; } return false; }
+function applyShift(w, t) {
+  if (t.phase === 'night') { for (const g of w.guards) if (!g.post && !g.dead && g.idx >= w.nGuardsNight && g.state !== 'hunt') { g.off = true; g.state = 'patrol'; g.dest = null; } }
+  if (t.phase === 'morning') {
+    const gr = w.map.rooms.find(r => r.type === 'guardroom');
+    for (const g of w.guards) { if (g.off) { g.off = false; g.x = gr.tiles[0].x; g.y = gr.tiles[0].y; g.px = g.x; g.py = g.y; g.routeKey = ''; } }
+    for (const p of w.players) { p.wanted = false; }
+    restock(w);
+  }
+  for (const g of w.guards) g.routeKey = '';
+}
+function finishRound(w) {
+  checkEnd(w); if (w.over) return;
+  w.round++; w.phase = 'players';
+  if (w.powerOff > 0 && --w.powerOff === 0) addLog(w, 'Power is restored.', null, null, 'alert');
+  if (w.camsOff > 0 && --w.camsOff === 0) addLog(w, 'The cameras reboot.', null, null, 'alert');
+  if (w.alert > 0 && ++w.alertTimer >= 6) { w.alert--; w.alertTimer = 0; if (w.alert === 0) addLog(w, 'The prison settles down.', null, null, 'info'); }
+  const t = timeOf(w);
+  if (t.left === t.len) {
+    addLog(w, t.wd + ' ' + t.name + ' begins.' + (t.phase === 'night' ? ' Prisoners must be in their cells.' : ''), null, null, 'info'); applyShift(w, t);
+    if (t.phase === 'night') notify(w, null, 'Lights out. Anyone outside their cell is in serious trouble.', 'bad');
+  }
+  if (t.phase === 'evening' && t.left === CFG.NIGHT_WARN && w.nightWarned !== t.day) { w.nightWarned = t.day; notify(w, null, 'Lights out in ' + CFG.NIGHT_WARN + ' rounds. Be in your own cell before then.', 'warn'); }
+  for (const g of w.guards) if (g.ko > 0) { g.ko--; if (g.ko === 0) { g.state = 'patrol'; g.dest = null; notify(w, null, g.name + ' wakes up with a headache.', 'warn'); } }
+  checkEnd(w);
+  let guard = 0;
+  while (!w.over && !firstPlayer(w) && guard++ < 80) { runGuardPhase(w); if (w.paused) return; }
+  refreshSpotted(w);
+}
+function checkEnd(w) {
+  if (w.over) return;
+  const esc = w.players.filter(p => p.status === 'escaped'), done = w.players.every(p => p.status === 'escaped' || p.status === 'transferred');
+  if (w.mode === 'race' && esc.length) { w.over = true; w.result = { type: 'race', winner: esc[0].id }; }
+  else if (done) { w.over = true; w.result = { type: esc.length === w.players.length ? 'full' : esc.length ? 'partial' : 'lost', escaped: esc.map(p => p.id) }; }
+  if (w.over) w.phase = 'over';
+}
+
+// every morning the prison is restocked: loot lands in random places, some rooms stay empty, salvage partly refills
+function restock(w) {
+  for (const r of w.map.rooms) {
+    const d = ROOMS[r.type]; if (r.type === 'cell' && r.owner !== null) continue;
+    if (d.loot && d.spots) r.spots = w.rng() < 0.75 ? rint(w.rng, Math.max(1, d.spots[0]), Math.max(1, d.spots[1])) : 0;
+    if (d.salvage) r.salv = Math.min(4, r.salv + rint(w.rng, 0, 2));
+  }
+  for (const t of w.map.grid) if (t && t.type === 'yard') t.spots = w.rng() < 0.35 ? 1 : 0;
+  addLog(w, 'Supplies were moved around overnight. New loot is lying about.', null, null, 'info');
+}
+
+// ===== engine3.js (v2) : guard actions and AI =====
+// Guards act only through guardAct(w, guard, action) so a human "prison" player can drive them later.
+// States: patrol, post, investigate (heard noise), sus (yellow ?), hunt (red !), search, brawl, ko, dead.
+function guardAct(w, g, a) {
+  if (g.ko > 0 || g.dead || g.off) return fail('Guard is down.');
+  if (g.ap <= 0) return fail('No AP.');
+  if (a.t === 'move') {
+    const t = unitTile(w, g), n = tileAt(w.map, a.x, a.y);
+    if (!n || !neighbors(w.map, t).includes(n)) return fail('Blocked.');
+    g.px = g.x; g.py = g.y; g.x = n.x; g.y = n.y; g.ap--; anim(w, 'g', g.id, n.x, n.y);
+    emitNoise(w, n.x, n.y, CFG.HEAR, { kind: 'guard', id: g.id }, 'footsteps', false);
+    return okk(null);
+  }
+  if (a.t === 'arrest') {
+    const p = w.players.find(p => p.status === 'free' && p.x === g.x && p.y === g.y && (!p.hidden || g.target === p.id));
+    if (!p) return fail('Nobody to arrest.');
+    g.ap--; arrestPlayer(w, g, p, g.name + ' caught you'); return okk(null);
+  }
+  if (a.t === 'search') {
+    g.ap--; const gt = unitTile(w, g);
+    for (const p of w.players) if (p.hidden && p.status === 'free' && pathDist(w, gt, ptile(w, p), 1) <= (coverOf(ptile(w, p)) === 'open' ? 1 : 0) && w.rng() < 0.6) {
+      p.hidden = false; notify(w, p.id, g.name + ' flushes you out of hiding!', 'bad'); markSuspect(w, g, p, trespassLevel(w, p) || 'sus', 'found hiding');
+    }
+    return okk(null);
+  }
+  if (a.t === 'wait') { g.ap = 0; return okk(null); }
+  return fail('Unknown guard action.');
+}
+function nextStep(w, from, to) { // BFS ignoring locks (guards carry keys)
+  if (from === to) return null;
+  const prev = new Map([[tkey(from), null]]); const q = [from];
+  while (q.length) {
+    const c = q.shift();
+    for (const n of neighbors(w.map, c)) {
+      const k = tkey(n); if (prev.has(k)) continue; prev.set(k, c);
+      if (n === to) { let cur = n; while (prev.get(tkey(cur)) !== from) cur = prev.get(tkey(cur)); return cur; }
+      q.push(n);
+    }
+  }
+  return null;
+}
+const stepToward = (w, g, x, y) => { const st = nextStep(w, unitTile(w, g), tileAt(w.map, x, y)); if (!st) return false; return guardAct(w, g, { t: 'move', x: st.x, y: st.y }).ok; };
+const at = (g, d) => d && g.x === d.x && g.y === d.y;
+
+// weekly patrol routes: identical every Monday morning, every Tuesday night, etc.
+function routeFor(w, g) {
+  const t = timeOf(w), key = t.slot + '-' + g.id;
+  if (!w.routes[key]) {
+    const r = mulberry32((w.seed ^ (t.wi * 7919) ^ (t.pi * 104729) ^ (g.id * 1299709)) >>> 0);
+    if (g.post) w.routes[key] = [g.home];
+    else {
+      const cells = w.map.rooms.filter(rm => rm.type === 'cell').flatMap(rm => rm.tiles);
+      const nearCells = shuffle(r, w.map.grid.filter(x => x && x.type === 'corridor' && cells.some(c => Math.abs(c.x - x.x) + Math.abs(c.y - x.y) === 1)));
+      const open = w.map.grid.filter(x => x && (x.type === 'corridor' || x.type === 'yard' || x.type === 'court' || x.type === 'door'));
+      const rooms = w.map.grid.filter(x => x && x.room && !['cell', 'solitary', 'court'].includes(x.type));
+      const pts = []; const night = t.phase === 'night';
+      for (let i = 0; i < 5; i++) { const roll = r(); const pool = (night && nearCells.length && roll < 0.55) ? nearCells : (roll < 0.75 ? open : rooms); const x = pool[Math.floor(r() * pool.length)]; pts.push({ x: x.x, y: x.y }); }
+      w.routes[key] = pts;
+    }
+  }
+  return w.routes[key];
+}
+function guardRouteTiles(w, g, slot) { // for the route overlay (UI) in any slot
+  const [wi, ph] = slot.split('-'); const saveRound = w.round; const pi = CFG.PHASES.findIndex(p => p.id === ph);
+  w.round = 1 + (+wi) * 36 + CFG.PHASES.slice(0, pi).reduce((a, p) => a + p.len, 0); const r = routeFor(w, g); w.round = saveRound; return r;
+}
+
+function runGuardPhase(w) { w.phase = 'guards'; w.gStage = null; w.paused = null; continueGuards(w); }
+function continueGuards(w) {
+  if (w.controllers.guards !== 'ai') return;
+  if (aiGuardPhase(w) === 'paused') return;
+  finishRound(w);
+}
+function aiGuardPhase(w) {
+  if (!w.gStage) {
+    w.gStage = 'guards'; w.gi = 0;
+    for (const p of w.players) { if (p.status !== 'free' || p.hidden || p.asleep) continue; const lvl = trespassLevel(w, p); if (!lvl) continue; const cam = cameraSees(w, p); if (!cam) continue;
+      const pt = ptile(w, p); const free = w.guards.filter(g => g.ko <= 0 && !g.dead && !g.off && g.state !== 'hunt');
+      if (!free.length) continue;
+      free.sort((a, b) => pathDist(w, unitTile(w, a), pt, 40) - pathDist(w, unitTile(w, b), pt, 40));
+      p.camSeen = w.round; notify(w, p.id, 'A camera spotted you in the ' + pt.name + '.', 'bad');
+      if (lvl === 'danger') markSuspect(w, free[0], p, 'danger', 'camera'); else { free[0].state = 'investigate'; free[0].dest = { x: p.x, y: p.y }; free[0].wait = 0; }
+      raiseAlert(w, 1, p.x, p.y);
+    }
+    for (const g of w.guards) { g.ap = w.alert >= 3 ? 3 : CFG.AP; g.px = g.x; g.py = g.y; }
+  }
+  while (w.gi < w.guards.length) {
+    const g = w.guards[w.gi];
+    if (!g.dead && !g.off && g.ko <= 0) { if (aiGuardTurn(w, g) === 'paused') return 'paused'; }
+    w.gi++;
+  }
+  npcPhase(w); tickBrawls(w); w.gStage = null; return 'done';
+}
+
+function aiGuardTurn(w, g) {
+  let safety = 16;
+  if (!g.looked) { g.looked = true; for (const p of w.players) scanOne(w, g, p); }
+  while (g.ap > 0 && g.ko <= 0 && !g.dead && safety-- > 0) {
+    observe(w, g);
+    let r;
+    switch (g.state) {
+      case 'hunt': r = huntStep(w, g); break;
+      case 'sus': r = susStep(w, g); break;
+      case 'investigate': r = investigateStep(w, g); break;
+      case 'search': r = searchStep(w, g); break;
+      case 'brawl': r = brawlStep(w, g); break;
+      default: r = patrolStep(w, g);
+    }
+    if (r === 'paused') return 'paused';
+  }
+  g.looked = false;
+}
+// one guard looks at one prisoner: trespassing, staying put in a restricted area
+function scanOne(w, g, p) {
+  const lvl = trespassLevel(w, p); if (!lvl || !guardSees(w, g, p)) return;
+  if (p.wearing && !(sightDist(w, g, ptile(w, p)) <= 1 && w.rng() < 0.35)) return;
+  const s = g.sus[p.id];
+  if (lvl === 'sus' && s && s.level === 'sus' && s.kind === 'trespass') { s.obs++; if (s.obs >= 2) { markSuspect(w, g, p, 'danger', 'lingering in a restricted area'); return; } }
+  markSuspect(w, g, p, lvl, lvl === 'danger' ? 'out of cell after lights out' : 'trespass');
+}
+function observe(w, g) {
+  // bodies
+  for (const o of w.guards) if ((o.ko > 0 || o.dead) && !o.found && o !== g && !o.off && sightDist(w, g, unitTile(w, o)) !== Infinity) {
+    o.found = true;
+    if (o.dead) { raiseAlert(w, 2, o.x, o.y, g.name + ' finds ' + o.name + "'s body. Lockdown!"); notify(w, null, 'A guard has been found dead. The prison is on high alert.', 'bad'); }
+    else { raiseAlert(w, 1, o.x, o.y, g.name + ' finds ' + o.name + ' unconscious.'); notify(w, null, 'A guard was found knocked out.', 'warn'); }
+    for (const h of w.guards) if (!h.dead && !h.off && h.ko <= 0 && ['patrol', 'post', 'investigate', 'search'].includes(h.state)) { h.state = 'search'; h.lastSeen = { x: o.x, y: o.y }; h.roam = true; h.searchLeft = 5; }
+  }
+  // night bed checks: an empty bed without a dummy means an escaped prisoner
+  if (isNight(w)) for (const p of w.players) {
+    if (p.status !== 'free' || p.wanted) continue;
+    const room = cellOf(w, p), tile = room.tiles[0], d = sightDist(w, g, tile); if (d > 1) continue;
+    const inside = p.x === tile.x && p.y === tile.y;
+    if (!inside && (!room.dummy || (d === 0 && w.rng() < 0.15))) {
+      p.wanted = true; raiseAlert(w, 2, tile.x, tile.y, g.name + ' finds an empty bed in ' + p.name + "'s cell!");
+      notify(w, p.id, g.name + ' found your bed empty at lights out. Every guard is looking for you.', 'bad');
+      for (const h of w.guards) if (!h.dead && !h.off && h.ko <= 0 && ['patrol', 'post', 'investigate', 'search'].includes(h.state)) { h.state = 'search'; h.lastSeen = { x: tile.x, y: tile.y }; h.roam = true; h.searchLeft = 6; }
+    }
+  }
+}
+function susStep(w, g) {
+  const p = w.players[g.target], s = p && g.sus[p.id];
+  if (!p || p.status !== 'free' || !s) { g.state = g.post ? 'post' : 'patrol'; g.target = null; return; }
+  if (guardSees(w, g, p)) {
+    s.last = { x: p.x, y: p.y }; g.lastSeen = s.last; const d = sightDist(w, g, ptile(w, p));
+    if (d <= 1 && !p.pending) {
+      p.pending = { type: 'confront', gid: g.id, kind: s.kind }; w.paused = { gid: g.id, pid: p.id };
+      notify(w, p.id, g.name + ' stops you (' + s.kind + '). React!', 'bad'); return 'paused';
+    }
+    if (!stepToward(w, g, p.x, p.y)) g.ap = 0; return;
+  }
+  if (at(g, s.last)) { g.state = 'search'; g.lastSeen = s.last; g.roam = false; g.searchLeft = 2; delete g.sus[p.id]; g.target = null; return; }
+  if (!stepToward(w, g, s.last.x, s.last.y)) { g.state = 'patrol'; g.ap = 0; }
+}
+function huntStep(w, g) {
+  const p = w.players[g.target];
+  if (!p || p.status !== 'free') { g.state = g.post ? 'post' : 'patrol'; g.target = null; return; }
+  if (p.x === g.x && p.y === g.y && (!p.hidden || guardSees(w, g, p))) { guardAct(w, g, { t: 'arrest' }); g.ap = 0; return; }
+  if (guardSees(w, g, p)) { g.lastSeen = { x: p.x, y: p.y }; if (g.sus[p.id]) g.sus[p.id].last = g.lastSeen; }
+  const L = g.lastSeen;
+  if (L && !at(g, L)) { if (!stepToward(w, g, L.x, L.y)) g.ap = 0; return; }
+  g.state = 'search'; g.roam = true; g.searchLeft = 6; // lost sight of a dangerous prisoner: keep looking nearby
+}
+function investigateStep(w, g) {
+  if (!g.dest) { g.state = 'patrol'; return; }
+  if (at(g, g.dest)) { guardAct(w, g, { t: 'search' }); g.state = 'patrol'; g.dest = null; g.wait = 1; g.ap = 0; return; }
+  if (!stepToward(w, g, g.dest.x, g.dest.y)) { g.state = 'patrol'; g.dest = null; g.ap = 0; }
+}
+function searchStep(w, g) {
+  const L = g.lastSeen; if (!L) { g.state = 'patrol'; return; }
+  if (!at(g, L)) { if (!stepToward(w, g, L.x, L.y)) { g.state = 'patrol'; g.ap = 0; } return; }
+  guardAct(w, g, { t: 'search' }); g.searchLeft--;
+  if (g.searchLeft <= 0) { g.state = g.post ? 'post' : 'patrol'; g.dest = null; g.ap = 0; return; }
+  if (g.roam) { const near = w.map.grid.filter(t => t && t.type !== 'exit' && kindOf(t) !== 'exit' && Math.abs(t.x - L.x) + Math.abs(t.y - L.y) <= 4 && t.type !== 'solitary'); const t = pick(w.rng, near); g.lastSeen = { x: t.x, y: t.y }; }
+  g.ap = 0;
+}
+function brawlStep(w, g) {
+  const b = w.brawls.find(b => b.left > 0);
+  if (!b) { g.state = 'search'; g.roam = false; g.searchLeft = 2; return; }
+  if (g.x === b.x && g.y === b.y) { g.ap = 0; return; }
+  if (!stepToward(w, g, b.x, b.y)) g.ap = 0;
+}
+function patrolStep(w, g) {
+  const t = timeOf(w);
+  if (g.routeKey !== t.slot) { g.routeKey = t.slot; g.routeI = 0; }
+  const route = routeFor(w, g), wp = route[g.routeI % route.length];
+  if (g.post) { if (!at(g, g.home)) { if (stepToward(w, g, g.home.x, g.home.y)) return; } g.ap = 0; return; }
+  if (at(g, wp)) { if (g.wait > 0) { g.wait--; g.ap = 0; return; } g.routeI++; g.wait = w.rng() < 0.4 ? 1 : 0; return; }
+  if (!stepToward(w, g, wp.x, wp.y)) { g.routeI++; g.ap = 0; }
+}
+function tickBrawls(w) {
+  for (const b of w.brawls) if (b.left > 0) { b.left--; emitNoise(w, b.x, b.y, 5, { kind: 'npc' }, 'brawl', true); if (b.left === 0) addLog(w, 'The brawl is broken up.', b.x, b.y, 'info'); }
+  w.brawls = w.brawls.filter(b => b.left > 0 || w.round - b.round < 2);
+}
+function startBrawl(w, x, y, rid) {
+  w.brawls.push({ x, y, left: 4, rid, round: w.round });
+  addLog(w, 'A brawl breaks out!', x, y, 'alert'); emitNoise(w, x, y, 7, { kind: 'npc' }, 'brawl', true);
+  for (const g of w.guards) if (!g.dead && !g.off && g.ko <= 0 && ['patrol', 'post', 'investigate', 'search'].includes(g.state) && pathDist(w, unitTile(w, g), tileAt(w.map, x, y), 9) <= 9) { g.state = 'brawl'; g.dest = null; }
+}
+
+// ===== engine4.js (v2) : context actions, modal data and tips for the UI (and for test bots) =====
+function moveOptions(w, p) {
+  const t = ptile(w, p);
+  return neighbors(w.map, t).map(n => {
+    const locked = !!(n.room && n.room !== t.room && roomLocked(w, n.room, p));
+    return { x: n.x, y: n.y, name: n.name, locked, why: locked ? lockWhy(w, p, n) : null, restricted: restricted(w, p, n), tile: n };
+  });
+}
+function runOptions(w, p) { // tiles 2 or 3 steps away for 2 AP
+  const t = ptile(w, p), res = [];
+  for (const [k, d] of reach(w, t, 3, false)) {
+    if (d < 2) continue; const [x, y] = k.split(',').map(Number), to = tileAt(w.map, x, y);
+    const path = pathTo(w, p, t, to, 3); if (path && path.length >= 2) res.push({ x, y, name: to.name, steps: path.length, restricted: restricted(w, p, to) });
+  }
+  return res;
+}
+
+function getActions(w, p) {
+  const t = ptile(w, p), R = ROOMS[t.type], room = t.room, list = [];
+  const add = (id, label, ap, a, why, extra) => list.push(Object.assign({ id, label, ap, a, why: why || (p.ap < ap ? 'Needs ' + ap + ' AP' : null), enabled: !why && p.ap >= ap }, extra || {}));
+  if (p.status !== 'free') return list;
+  const own = room && room.type === 'cell' && room.owner === p.id;
+  const cover = coverOf(t);
+  add('hide', p.hidden ? 'Hidden' : 'Hide', 1, { t: 'hide' }, p.hidden ? 'Already hidden' : null, { note: cover === 'open' ? 'found within 2 tiles' : 'found only on the same tile' });
+  const body = guardsAt(w, t.x, t.y).find(g => (g.ko > 0 || g.dead) && (g.carry.baton || g.carry.keycard || g.carry.cigs));
+  if (body) add('loot', 'Search ' + body.name, 1, { t: 'loot' });
+  else if (R.loot) {
+    const src = room && room.type === 'cell' ? room : t; const left = src.spots;
+    const steal = room && room.type === 'cell' && !own;
+    add('loot', steal ? 'Steal' : 'Loot', 1, { t: 'loot' }, own ? 'Your own cell: use the stash' : (left <= 0 ? 'Nothing left here' : null), { note: left > 0 ? left + ' spot' + (left > 1 ? 's' : '') : '', sus: !!ROOMS[t.type].loot });
+  }
+  if (R.salvage) add('salvage', 'Salvage', 1, { t: 'salvage' }, (room && room.salv <= 0) ? 'Stripped bare' : null);
+  if (R.work) add('work', 'Work shift (+1 cig)', 1, { t: 'work' }, isNight(w) ? 'Not at night' : ((p.workCd[room.id] || 0) > w.round ? 'Come back later' : null));
+  if (t.type === 'cell' || t.type === 'workshop') for (const r of RECIPES) {
+    const need = Object.entries(r.cost).map(([i, q]) => q + ' ' + ITEMS[i].name.toLowerCase()).join(', ');
+    add('craft_' + r.out, 'Craft ' + ITEMS[r.out].name, 1, { t: 'craft', out: r.out }, Object.entries(r.cost).some(([i, q]) => !has(p, i, q)) ? 'Needs ' + need : null, { note: need });
+  }
+  if (own) {
+    add('stash', 'Open stash', 0, { t: 'stash' }, null, { ui: 'stash' });
+    add('dummy', 'Put dummy in bed', 1, { t: 'dummy' }, room.dummy ? 'Dummy already in bed' : (has(p, 'dummy') ? null : 'Needs a bed dummy'));
+    if (isNight(w)) add('sleep', 'Sleep through the night', 0, { t: 'sleep' }, null, { note: 'skips ahead' });
+  }
+  for (const n of w.npcs) if (n.x === t.x && n.y === t.y && !n.off && !n.dead && n.ko <= 0) {
+    if (n.hostile != null) { add('atkn_' + n.id, 'Fight ' + n.name, 1, { t: 'attack', kind: 'npc', id: n.id }, null); continue; }
+    const label = n.role === 'inmate' ? 'Talk to ' + n.name : n.name + ' (' + n.role + ')';
+    add('trade_' + n.id, label, 0, { t: 'trade', nid: n.id }, null, { ui: 'shop', nid: n.id });
+    if (n.role === 'inmate') {
+      add('hire_' + n.id, 'Hire ' + n.name + ' for a brawl', 0, { t: 'hire', nid: n.id }, null, { ui: 'hire', nid: n.id, note: '8 cigs' });
+      add('atkn_' + n.id, 'Attack ' + n.name, 1, { t: 'attack', kind: 'npc', id: n.id }, null);
+      if (weaponOf(p).id !== 'fists') add('snkn_' + n.id, 'Takedown ' + n.name, 2, { t: 'sneakattack', kind: 'npc', id: n.id }, (p.hidden || !tileLit(w, t)) ? null : 'Hide or use the dark first');
+    }
+  }
+  // doors: locked rooms and other cells at night
+  const seen = new Set();
+  for (const n of neighbors(w.map, t)) if (n.room && n.room !== room && !seen.has(n.room.id) && roomLocked(w, n.room, p)) {
+    seen.add(n.room.id); const r = n.room, kc = has(p, 'keycard'), lp = has(p, 'lockpick');
+    const alarm = r.alarm && !(p.alarmOff.has(timeOf(w).slot) || w.camsOff > 0 && false);
+    const quiet = !r.alarm || p.alarmOff.has(timeOf(w).slot) || has(p, 'jammer');
+    add('unlock_' + r.id, (kc ? 'Swipe into ' : 'Pick lock: ') + r.name, 1, { t: 'unlock', rid: r.id }, (kc || lp) ? null : 'Needs lockpick or keycard', { note: kc || quiet ? '' : 'raises the alarm', sus: true, alarm: alarm && !quiet && !kc });
+  }
+  if (R.terminal) add('hack', 'Hack cameras', 1, { t: 'hack' }, (has(p, 'usb') || has(p, 'keycard')) ? null : 'Needs Hacker USB');
+  if (R.breaker) add('power', 'Cut the power', 1, { t: 'power' }, null);
+  const ex = exitsNear(w.map, t);
+  if (ex.some(e => e.type === 'fence')) add('cutfence', 'Cut fence and run', 2, { t: 'cutfence' }, has(p, 'wirecutters') ? null : 'Needs wirecutters');
+  if (ex.some(e => e.type === 'gate')) add('escape', 'Open gate and walk out', 1, { t: 'escape' }, has(p, 'keycard') ? null : 'Needs a keycard');
+  const wp = weaponOf(p);
+  for (const g of w.guards) {
+    if (g.dead || g.off || g.ko > 0) continue;
+    const d = pathDist(w, t, unitTile(w, g), 2);
+    if (d <= 1) {
+      const known = p.intel.corrupt;
+      add('bribe_' + g.id, 'Bribe ' + g.name + (known ? (g.corrupt ? ' (~' + g.price + ')' : ' (honest!)') : ''), 0, { t: 'bribe', gid: g.id }, null, { ui: 'bribe', gid: g.id });
+      if (g.corrupt && g.blind[p.id] && g.blind[p.id].until >= w.round) add('key_' + g.id, 'Buy keycard from ' + g.name, 1, { t: 'buykey', gid: g.id }, null);
+    }
+    if (d === 0) {
+      add('atk_' + g.id, 'Attack ' + g.name + ' (' + wp.id + ')', 1, { t: 'attack', kind: 'guard', id: g.id }, null);
+      const unaware = !['hunt', 'sus'].includes(g.state) && (p.hidden || !tileLit(w, t));
+      add('snk_' + g.id, 'Takedown ' + g.name, 2, { t: 'sneakattack', kind: 'guard', id: g.id }, unaware ? null : 'Too alert. Hide or use the dark.');
+    } else if (d <= 2 && wp.ranged) add('atk_' + g.id, 'Shoot ' + g.name, 1, { t: 'attack', kind: 'guard', id: g.id }, null);
+  }
+  const others = playersAt(w, t.x, t.y, p.id);
+  if (others.length) {
+    add('give', 'Give item', 0, { t: 'give' }, Object.keys(p.items).length ? null : 'Nothing to give', { ui: 'give', others: others.map(q => q.id) });
+    if (w.mode === 'race') for (const q of others) add('pvp_' + q.id, 'Attack ' + q.name, 1, { t: 'attack', kind: 'player', id: q.id }, null);
+  }
+  if (has(p, 'pills')) add('pills', 'Take painkillers', 1, { t: 'use', item: 'pills' }, p.hp >= CFG.HP_PRISONER ? 'Not hurt' : null);
+  if (has(p, 'meth')) add('meth', 'Take meth', 1, { t: 'use', item: 'meth' }, p.meth ? 'Already on it / crashing' : null, { note: '3 AP for ' + CFG.METH.high + ' turns, then ' + CFG.METH.crash + ' turns of 1 AP' });
+  if (has(p, 'uniform')) add('uniform', p.wearing ? 'Take off uniform' : 'Wear uniform', 1, { t: 'use', item: 'uniform' }, null);
+  return list;
+}
+
+// ----- modal data -----
+function shopFor(w, p) {
+  const n = shopNpc(w, p); if (!n) return null;
+  const mine = Object.keys(p.items).filter(i => i !== 'cigs').map(i => ({ item: i, price: sellPrice(i), qty: p.items[i] }));
+  if (n.role === 'fixer') return { nid: n.id, role: 'fixer', name: 'Fixer', intel: [{ kind: 'cams', label: 'Camera locations', price: CFG.INTEL_PRICE }, { kind: 'corrupt', label: 'Which guards take bribes', price: CFG.INTEL_PRICE }, { kind: 'guards', label: 'Guard positions for 3 rounds', price: CFG.INTEL_PRICE }] };
+  if (n.role === 'informant') {
+    const slots = []; for (let d = 0; d < 7; d++) for (const ph of CFG.PHASES) { const s = d + '-' + ph.id; slots.push({ slot: s, label: slotLabel(s), owned: p.routeIntel.has(s), price: CFG.ROUTE_PRICE }); }
+    return { nid: n.id, role: 'informant', name: 'Informant', slots };
+  }
+  return { nid: n.id, role: n.role, name: n.role === 'inmate' ? n.name : VENDORS[n.role].name, sells: Object.entries(npcStock(n)).map(([item, price]) => ({ item, price })), buys: n.role === 'dealer' ? mine : [] };
+}
+function stashData(w, p) {
+  const room = cellOf(w, p); return { carry: Object.assign({}, p.items), stash: Object.assign({}, room.stash) };
+}
+function bribeData(w, p, gid) {
+  const g = w.guards.find(x => x.id === gid); if (!g) return null;
+  return { gid, name: g.name, known: p.intel.corrupt, corrupt: g.corrupt, purposes: ['blind', 'alarm'].map(k => ({ k, label: BRIBE[k].label, desc: BRIBE[k].desc, price: bribePrice(w, g, k), offers: OFFERS.map(o => ({ k: o.k, label: o.label, amount: Math.round(bribePrice(w, g, k) * o.f) })) })), phases: CFG.PHASES.map(ph => ({ id: ph.id, name: ph.name })) };
+}
+function confrontData(w, p) {
+  const pd = p.pending; if (!pd) return null; const g = w.guards.find(x => x.id === pd.gid);
+  if (pd.type === 'confront') return Object.assign({ type: 'confront', guard: g && g.name, price: g && bribePrice(w, g, 'release'), offers: g && OFFERS.map(o => ({ k: o.k, label: o.label, amount: Math.round(bribePrice(w, g, 'release') * o.f) })), canAttack: !!weaponOf(p) }, pd);
+  return Object.assign({ type: pd.type }, pd);
+}
+
+// ----- tips ("?" corner): what to do next -----
+function getTips(w, p) {
+  const t = timeOf(w), tips = [], c = (txt) => tips.push(txt);
+  const room = cellOf(w, p);
+  if (p.pending) c('Something is happening to you right now. Choose a reaction in the window.');
+  if (t.phase === 'evening' && t.left <= CFG.NIGHT_WARN) c('Lights out soon. Walk back to your own cell (highlighted YOUR CELL) before night. Place a dummy in the bed if you want to roam later.');
+  if (t.phase === 'night') c(inOwnCell(w, p) ? 'You are in your cell at night: safe. Sleep to skip to morning, or sneak out with a lockpick and a bed dummy.' : 'Guards expect you in your cell. Anyone out of bed is hunted. Get back, or make sure a dummy covers for you.');
+  if (!p.items.lockpick && !p.items.keycard) c('Next step: collect 3 scrap (salvage in workshop, laundry, kitchen), craft a lockpick in your cell, or buy one from the Dealer in the Common Room.');
+  if (!p.items.wirecutters && !p.items.keycard) c('To escape you need wirecutters (fence, 2 AP) or a keycard (gate). Wirecutters: craft with 5 scrap or buy from the Dealer.');
+  if (!Object.keys(room.stash).length && Object.keys(p.items).filter(i => i !== 'cigs' && isContraband(i)).length) c('Contraband on you gets confiscated if you are caught. Store it in your cell stash.');
+  if ((p.items.cigs || 0) < 5) c('Cigarettes are currency and cannot be confiscated. Earn them with work shifts (library, kitchen, laundry, workshop).');
+  c('Yellow ? above a guard = suspicious of you. Red ! = hunting you. Out of sight for a while and he gives up.');
+  c('Lockpicking rooms with alarms alerts everyone. Get a jammer, or bribe a guard to switch alarms off for a time of day.');
+  c('The Informant in the Library sells patrol routes. Guards repeat the same routes every week, in the same time slot.');
+  return tips.slice(0, 7);
+}
+
+// ===== engine5.js (v2) : NPCs (vendors and inmates), routines, hostility, hired brawls, witnesses =====
+const WORK_TYPES = ['workshop', 'laundry', 'kitchen', 'library'];
+function roomsOfType(w, type) { return w.map.rooms.filter(r => r.type === type); }
+
+function spawnNpcs(w) {
+  const { map, rng } = w; const names = shuffle(rng, NPC_NAMES.slice());
+  const add = (o) => { const n = Object.assign({ id: w.nextId++, hp: 4, ko: 0, off: false, dead: false, hostile: null, hostLeft: 0, stock: {}, fight: null }, o); w.npcs.push(n); return n; };
+  for (const role of Object.keys(VENDORS)) {
+    const v = VENDORS[role], room = roomsOfType(w, v.room)[0]; if (!room) continue;
+    const t = room.tiles[Math.floor(rng() * room.tiles.length)];
+    add({ role, name: v.name, x: t.x, y: t.y, home: { x: t.x, y: t.y }, roomId: room.id });
+  }
+  const free = map.rooms.filter(r => r.type === 'cell' && r.owner === null);
+  const keys = Object.keys(INMATE_STOCK).filter(k => k !== 'cigs');
+  const count = Math.min(CFG.NPCS, free.length);
+  for (let i = 0; i < count; i++) {
+    const room = free[i], stock = {};
+    for (const k of shuffle(rng, keys.slice()).slice(0, rint(rng, 1, 3))) stock[k] = INMATE_STOCK[k] + rint(rng, -1, 2);
+    const stay = rng() < 0.6 ? pick(rng, ['morning', 'day', 'evening']) : null; // sits in the cell during this phase
+    const n = add({ role: 'inmate', name: names[i % names.length], x: room.tiles[0].x, y: room.tiles[0].y, home: { x: room.tiles[0].x, y: room.tiles[0].y }, cellRoom: room, stock, stay });
+    room.npcOwners.push(n.id);
+    const t = npcTarget(w, n); if (t) { n.x = t.x; n.y = t.y; }
+  }
+}
+
+// deterministic weekly routine: the same inmate is in the same place every Tuesday evening
+function npcTarget(w, n) {
+  const t = timeOf(w);
+  if (n.role !== 'inmate') return n.home;
+  if (t.phase === 'night' || n.stay === t.phase) return n.home;
+  const r = mulberry32((w.seed ^ (t.wi * 31337) ^ (t.pi * 7919) ^ (n.id * 104729)) >>> 0);
+  let types;
+  if (t.phase === 'morning') types = ['dining', 'showers', 'common'];
+  else if (t.phase === 'day') types = WORK_TYPES.concat(['court', 'common']);
+  else types = ['common', 'court', 'dining'];
+  const rooms = types.flatMap(ty => roomsOfType(w, ty));
+  if (!rooms.length) return n.home;
+  const room = rooms[Math.floor(r() * rooms.length)];
+  const tile = room.tiles[Math.floor(r() * room.tiles.length)];
+  return { x: tile.x, y: tile.y };
+}
+function npcStep(w, n, x, y) {
+  const st = nextStep(w, tileAt(w.map, n.x, n.y), tileAt(w.map, x, y)); if (!st) return false;
+  n.x = st.x; n.y = st.y; return true;
+}
+
+function npcTurnHostile(w, n, p, why) {
+  if (n.role !== 'inmate' || n.dead) return;
+  n.hostile = p.id; n.hostLeft = 8;
+  notify(w, p.id, n.name + ' turns on you. ' + (why || ''), 'bad');
+  emitNoise(w, n.x, n.y, 3, { kind: 'npc' }, 'shouting', true);
+}
+
+function attackNpc(w, p, t, a, wp, sneak) {
+  const n = w.npcs.find(n => n.id === a.id);
+  if (!n || n.dead || n.ko > 0 || n.off || n.x !== p.x || n.y !== p.y) return fail('No target here.');
+  p.loudRound = w.round; p.hidden = false;
+  emitNoise(w, t.x, t.y, wp.id === 'pistol' ? CFG.NOISE.gun : CFG.NOISE.fight, { kind: 'player', id: p.id }, 'fighting', true);
+  if (wp.id === 'pistol') takeItem(p, 'ammo');
+  witness(w, p, 'danger', 'fighting');
+  const lethal = wp.lethal > 0 && w.rng() < Math.min(0.9, wp.lethal * (sneak ? 1.4 : 1));
+  if (lethal) { n.dead = true; n.off = true; npcDrop(w, p, n); npcWitness(w, p, 'attack', n); return okk('You kill ' + n.name + '. The body will be found.'); }
+  n.hp -= sneak ? 3 : wp.dmg;
+  if (n.hp <= 0) { n.ko = 8; n.hp = 2; npcDrop(w, p, n); return okk('You knock ' + n.name + ' out.'); }
+  npcTurnHostile(w, n, p, 'You hit first.'); return okk('You hit ' + n.name + '. He hits back soon.');
+}
+function npcDrop(w, p, n) { const c = Math.min(3, rint(w.rng, 0, 3)); if (c) addItem(p, 'cigs', c); for (const k of Object.keys(n.stock)) if (w.rng() < 0.3) addItem(p, k, 1); }
+
+// inmates who see violence: ask for money, betray, or keep quiet. Returns true when someone saw.
+function npcWitness(w, p, what, victim) {
+  let saw = false;
+  for (const n of w.npcs) {
+    if (n.role !== 'inmate' || n.dead || n.ko > 0 || n.off || n === victim || n.hostile === p.id) continue;
+    if (sightDist(w, { x: n.x, y: n.y, __npc: true }, ptile(w, p)) > 3 && !(n.x === p.x && n.y === p.y)) continue;
+    saw = true; const roll = w.rng();
+    if (roll < 0.4 && !p.pending) { p.pending = { type: 'extort', nid: n.id, amount: rint(w.rng, 2, 4) }; notify(w, p.id, n.name + ' saw what you did and wants a payoff.', 'warn'); }
+    else if (roll < 0.65) npcBetray(w, n, p);
+  }
+  return saw;
+}
+function npcBetray(w, n, p) {
+  const gs = w.guards.filter(g => g.ko <= 0 && !g.dead && !g.off).sort((a, b) => pathDist(w, unitTile(w, a), tileAt(w.map, n.x, n.y), 30) - pathDist(w, unitTile(w, b), tileAt(w.map, n.x, n.y), 30));
+  if (!gs.length) return;
+  markSuspect(w, gs[0], p, 'danger', n.name + ' ratted on you');
+  notify(w, p.id, n.name + ' told the guards it was you!', 'bad');
+}
+
+function npcPhase(w) {
+  const t = timeOf(w), night = t.phase === 'night';
+  for (const n of w.npcs) {
+    if (n.dead) continue;
+    if (n.ko > 0) { n.ko--; continue; }
+    if (n.role !== 'inmate') { n.off = night; continue; }
+    n.off = false;
+    if (n.hostile != null) {
+      const p = w.players[n.hostile];
+      if (!p || p.status !== 'free' || --n.hostLeft <= 0) { n.hostile = null; continue; }
+      for (let i = 0; i < 2 && !(n.x === p.x && n.y === p.y); i++) npcStep(w, n, p.x, p.y);
+      if (n.x === p.x && n.y === p.y) {
+        p.hp -= 1; p.hidden = false; emitNoise(w, n.x, n.y, CFG.NOISE.fight, { kind: 'npc' }, 'fighting', true);
+        notify(w, p.id, n.name + ' hits you. (' + Math.max(p.hp, 0) + ' HP)', 'bad');
+        if (p.hp <= 0) { p.hp = 2; p.ko = 3; const c = Math.ceil((p.items.cigs || 0) / 2); if (c) takeItem(p, 'cigs', c); n.hostile = null; notify(w, p.id, n.name + ' beats you senseless and takes ' + c + ' cigarettes.', 'bad'); }
+      }
+      continue;
+    }
+    const c = w.contracts.find(c => c.nid === n.id && !c.ended && c.slot === t.slot);
+    if (c) {
+      const room = w.map.rooms[c.rid], dest = room.tiles[0];
+      if (!c.started) {
+        if (n.x === dest.x && n.y === dest.y || (t.len - t.left >= 3)) { c.started = true; startBrawl(w, n.x, n.y, c.rid); notify(w, c.by, n.name + ' starts the brawl you paid for in the ' + room.name + '.', 'good'); }
+        else { npcStep(w, n, dest.x, dest.y); npcStep(w, n, dest.x, dest.y); }
+      } else if (!w.brawls.some(b => b.rid === c.rid && b.left > 0)) c.ended = true;
+      continue;
+    }
+    const goal = npcTarget(w, n);
+    for (let i = 0; i < 2 && !(n.x === goal.x && n.y === goal.y); i++) npcStep(w, n, goal.x, goal.y);
+  }
+  for (const c of w.contracts) if (c.slot !== t.slot && c.started) c.ended = true;
+}
+
+// ===== audio.js : WebAudio music and sfx, no assets. Volume and mute are remembered. =====
+const AUDIO = (() => {
+  let ac = null, master = null, musicBus = null, sfxBus = null, timer = null, nextBar = 0, mood = 'calm', bar = 0;
+  const S = { muted: false, music: 0.5, sfx: 0.7, started: false };
+  try { const j = JSON.parse(localStorage.getItem('ts_audio') || 'null'); if (j) Object.assign(S, j, { started: false }); } catch (e) { /* storage unavailable */ }
+  const save = () => { try { localStorage.setItem('ts_audio', JSON.stringify({ muted: S.muted, music: S.music, sfx: S.sfx })); } catch (e) { /* ignore */ } };
+  const hz = n => 440 * Math.pow(2, (n - 69) / 12);
+  function apply() { if (!ac) return; master.gain.setTargetAtTime(S.muted ? 0 : 1, ac.currentTime, 0.03); musicBus.gain.setTargetAtTime(S.music * 0.35, ac.currentTime, 0.05); sfxBus.gain.setTargetAtTime(S.sfx * 0.6, ac.currentTime, 0.05); }
+  function init() {
+    if (ac) { if (ac.state === 'suspended') ac.resume(); return; }
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+    try { ac = new AC(); } catch (e) { ac = null; return; }
+    master = ac.createGain(); musicBus = ac.createGain(); sfxBus = ac.createGain();
+    const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 5200;
+    musicBus.connect(lp); sfxBus.connect(lp); lp.connect(master); master.connect(ac.destination); apply();
+    S.started = true; nextBar = ac.currentTime + 0.1; timer = setInterval(schedule, 250);
+  }
+  function tone(t, f, dur, type, vol, bus, attack, rel, slideTo) {
+    const o = ac.createOscillator(), g = ac.createGain(); o.type = type || 'sine'; o.frequency.setValueAtTime(f, t); if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + (attack || 0.01)); g.gain.exponentialRampToValueAtTime(0.0001, t + dur + (rel || 0.05));
+    o.connect(g); g.connect(bus || sfxBus); o.start(t); o.stop(t + dur + (rel || 0.05) + 0.05);
+  }
+  function noise(t, dur, vol, fq, q, bus) {
+    const n = Math.floor(ac.sampleRate * dur), buf = ac.createBuffer(1, n, ac.sampleRate), d = buf.getChannelData(0); for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+    const s = ac.createBufferSource(); s.buffer = buf; const f = ac.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = fq || 1200; f.Q.value = q || 0.8; const g = ac.createGain(); g.gain.value = vol;
+    s.connect(f); f.connect(g); g.connect(bus || sfxBus); s.start(t);
+  }
+  // music: slow minor progression. night is lower and sparser, alert adds a pulse.
+  const PROG = [[45, 52, 57, 60], [41, 48, 53, 57], [43, 50, 55, 59], [40, 47, 52, 56]];
+  const SCALE = [57, 60, 62, 64, 67, 69, 72];
+  function schedule() {
+    if (!ac || S.muted && S.music <= 0) return;
+    while (nextBar < ac.currentTime + 1.2) {
+      const spb = mood === 'alert' ? 2.4 : mood === 'night' ? 4.4 : 3.6, t = nextBar, ch = PROG[bar % 4].map(n => n + (mood === 'night' ? -5 : 0));
+      ch.forEach((n, i) => tone(t + i * 0.04, hz(n), spb * 1.05, i === 0 ? 'triangle' : 'sine', i === 0 ? 0.5 : 0.22, musicBus, spb * 0.35, spb * 0.5));
+      const notes = mood === 'night' ? 2 : mood === 'alert' ? 6 : 4;
+      for (let i = 0; i < notes; i++) if (Math.random() < (mood === 'night' ? 0.6 : 0.75)) { const n = SCALE[Math.floor(Math.random() * SCALE.length)] + (mood === 'night' ? -12 : 0); tone(t + (i + Math.random() * 0.4) * spb / notes, hz(n), 0.9, 'triangle', 0.16, musicBus, 0.01, 0.6); }
+      if (mood === 'alert') for (let i = 0; i < 8; i++) tone(t + i * spb / 8, hz(ch[0] - 12), 0.18, 'square', i % 2 ? 0.12 : 0.22, musicBus, 0.005, 0.08);
+      nextBar += spb; bar++;
+    }
+  }
+  const SFX = {
+    step: t => noise(t, 0.07, 0.35, 700, 1.2), sneak: t => noise(t, 0.05, 0.12, 500, 1.2), run: t => { noise(t, 0.06, 0.4, 900, 1); noise(t + 0.09, 0.06, 0.4, 900, 1); noise(t + 0.18, 0.06, 0.4, 900, 1); },
+    loot: t => { noise(t, 0.18, 0.3, 2500, 0.6); noise(t + 0.12, 0.1, 0.2, 3500, 0.6); }, coin: t => { tone(t, hz(88), 0.12, 'square', 0.18); tone(t + 0.08, hz(95), 0.25, 'square', 0.18); },
+    click: t => { tone(t, hz(96), 0.03, 'square', 0.2); tone(t + 0.07, hz(84), 0.03, 'square', 0.2); }, lock: t => { for (let i = 0; i < 3; i++) tone(t + i * 0.09, hz(90 + i), 0.03, 'square', 0.18); tone(t + 0.35, hz(70), 0.1, 'square', 0.2); },
+    hit: t => { noise(t, 0.12, 0.7, 300, 0.7); tone(t, 110, 0.14, 'sine', 0.5, sfxBus, 0.005, 0.05, 50); }, shot: t => { noise(t, 0.35, 1, 1400, 0.4); tone(t, 160, 0.3, 'sine', 0.7, sfxBus, 0.002, 0.1, 40); },
+    alarm: t => { for (let i = 0; i < 6; i++) tone(t + i * 0.28, hz(i % 2 ? 76 : 83), 0.26, 'sawtooth', 0.22); }, siren: t => { tone(t, 500, 0.9, 'sawtooth', 0.2, sfxBus, 0.05, 0.1, 900); tone(t + 0.9, 900, 0.9, 'sawtooth', 0.2, sfxBus, 0.05, 0.1, 500); },
+    bad: t => { tone(t, hz(57), 0.25, 'sawtooth', 0.25); tone(t + 0.2, hz(53), 0.4, 'sawtooth', 0.25); }, warn: t => { tone(t, hz(76), 0.15, 'triangle', 0.3); tone(t + 0.15, hz(76), 0.2, 'triangle', 0.3); },
+    good: t => { tone(t, hz(72), 0.12, 'triangle', 0.3); tone(t + 0.1, hz(79), 0.25, 'triangle', 0.3); }, ui: t => tone(t, hz(84), 0.05, 'triangle', 0.18), hide: t => noise(t, 0.3, 0.2, 400, 0.5),
+    strike: t => { tone(t, 90, 0.5, 'sawtooth', 0.4, sfxBus, 0.01, 0.2, 45); noise(t, 0.2, 0.6, 250, 0.6); }, wake: t => { tone(t, hz(64), 0.3, 'sine', 0.3); tone(t + 0.25, hz(71), 0.5, 'sine', 0.3); },
+    win: t => [72, 76, 79, 84].forEach((n, i) => tone(t + i * 0.14, hz(n), 0.4, 'triangle', 0.3)), lose: t => [64, 60, 57, 52].forEach((n, i) => tone(t + i * 0.25, hz(n), 0.6, 'sawtooth', 0.22)),
+  };
+  return {
+    state: S, init,
+    sfx(name) { if (!ac || !SFX[name]) return; try { SFX[name](ac.currentTime + 0.01); } catch (e) { /* ignore */ } },
+    setMood(m) { mood = m; },
+    setMuted(v) { S.muted = !!v; apply(); save(); }, setMusic(v) { S.music = v; apply(); save(); }, setSfx(v) { S.sfx = v; apply(); save(); },
+  };
+})();
+
+// ===== ui_render.js (v2) : canvas top-down renderer =====
+// Rooms are filled edge to edge, walls are drawn on every unlinked tile edge, corridors look like hallways.
+const STYLE = {
+  cell: ['#3a4452', 'CELL'], solitary: ['#242830', 'SOLITARY'], common: ['#44506b', 'COMMON ROOM'], dining: ['#4d5164', 'DINING HALL'], showers: ['#36606c', 'SHOWERS'],
+  yard: ['#2f4632', 'YARD'], court: ['#6a4a30', 'BASKETBALL COURT'], corridor: ['#1d2226', ''], library: ['#56503c', 'LIBRARY'], workshop: ['#5a4a38', 'WORKSHOP'], laundry: ['#3a5a5e', 'LAUNDRY'],
+  infirmary: ['#47625f', 'INFIRMARY'], visitor: ['#48505e', 'VISITORS'], kitchen: ['#5e5744', 'KITCHEN'], storage: ['#41413b', 'STORAGE'],
+  armory: ['#653a3a', 'ARMORY'], guardroom: ['#383e66', 'GUARD ROOM'], warden: ['#613d52', "WARDEN'S OFFICE"], control: ['#2c5566', 'CONTROL'], electrical: ['#625430', 'POWER'],
+  door: ['#4b4f55', 'EXIT'], gate: ['#7a6528', 'MAIN GATE'], fence: ['#20252b', ''],
+};
+const C = { amber: '#f2b441', alert: '#e5484d', ok: '#5fb878', ink: '#0e1114', fg: '#d9dee3' };
+const NPC_COL = { dealer: '#9b6bd1', orderly: '#5fb8a0', fixer: '#3fa0c8', informant: '#d1a64a', inmate: '#c98a4b' };
+const MONO = '"IBM Plex Mono", monospace';
+
+function rr(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+function lockIcon(ctx, cx, cy, s, col) {
+  ctx.save(); ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = Math.max(1.5, s * 0.14);
+  ctx.beginPath(); ctx.arc(cx, cy - s * 0.12, s * 0.26, Math.PI, 0); ctx.stroke();
+  rr(ctx, cx - s * 0.36, cy - s * 0.06, s * 0.72, s * 0.5, s * 0.08); ctx.fill(); ctx.restore();
+}
+function camIcon(ctx, cx, cy, s, col) {
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(-0.4); ctx.fillStyle = col;
+  rr(ctx, -s * 0.5, -s * 0.26, s * 0.78, s * 0.52, s * 0.1); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(s * 0.28, -s * 0.12); ctx.lineTo(s * 0.6, -s * 0.3); ctx.lineTo(s * 0.6, s * 0.3); ctx.lineTo(s * 0.28, s * 0.12); ctx.closePath(); ctx.fill(); ctx.restore();
+}
+function eyeSlash(ctx, cx, cy, s, col) {
+  eyeIcon(ctx, cx, cy, s, col); ctx.save(); ctx.strokeStyle = '#0e1114'; ctx.lineWidth = Math.max(3, s * 0.3); ctx.beginPath(); ctx.moveTo(cx - s * 0.5, cy + s * 0.45); ctx.lineTo(cx + s * 0.5, cy - s * 0.45); ctx.stroke();
+  ctx.strokeStyle = col; ctx.lineWidth = Math.max(1.6, s * 0.14); ctx.stroke(); ctx.restore();
+}
+function eyeIcon(ctx, cx, cy, s, col) {
+  ctx.save(); ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = Math.max(1.2, s * 0.12);
+  ctx.beginPath(); ctx.ellipse(cx, cy, s * 0.5, s * 0.3, 0, 0, 7); ctx.stroke(); ctx.beginPath(); ctx.arc(cx, cy, s * 0.16, 0, 7); ctx.fill(); ctx.restore();
+}
+
+// where a unit is drawn: eases toward its real tile, which animates movement
+function dispPos(U, key, x, y) {
+  let d = U.disp[key]; if (!d) { d = U.disp[key] = { x, y }; return d; }
+  const dx = x - d.x, dy = y - d.y; if (dx * dx + dy * dy > 64) { d.x = x; d.y = y; return d; }
+  d.x += dx * 0.22; d.y += dy * 0.22; if (Math.abs(x - d.x) < 0.01) d.x = x; if (Math.abs(y - d.y) < 0.01) d.y = y; return d;
+}
+
+function drawGame(ctx, U, now) {
+  const w = U.w, p = w.players[U.viewer], W = U.W, H = U.H, TS = U.zoom, map = w.map;
+  ctx.clearRect(0, 0, W, H);
+  const sx = x => (x - U.cx) * TS + W / 2, sy = y => (y - U.cy) * TS + H / 2;
+  const vis = U.vis, mem = U.mem; const night = isNight(w);
+  const isVisT = t => vis.has(tkey(t)); const known = t => isVisT(t) || mem.has(tkey(t));
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const onScreen = t => { const x = sx(t.x), y = sy(t.y); return !(x > W || y > H || x + TS < 0 || y + TS < 0); };
+  // ---- floors ----
+  for (const t of map.grid) {
+    if (!t || !known(t) || !onScreen(t)) continue;
+    const v = isVisT(t), x = sx(t.x), y = sy(t.y), st = STYLE[t.type], e = 0.6;
+    ctx.fillStyle = st[0]; ctx.fillRect(x - e, y - e, TS + 2 * e, TS + 2 * e);
+    if (t.type === 'corridor') {
+      ctx.fillStyle = 'rgba(255,255,255,0.035)'; for (let i = 0; i < 4; i++) ctx.fillRect(x, y + (i + 0.5) * TS / 4, TS, 1);
+      ctx.strokeStyle = 'rgba(242,180,65,0.28)'; ctx.setLineDash([TS * 0.1, TS * 0.1]); ctx.lineWidth = Math.max(1, TS * 0.03);
+      ctx.beginPath(); let any = false;
+      for (const n of neighbors(map, t)) if (n.type === 'corridor' || n.type === 'door') { ctx.moveTo(x + TS / 2, y + TS / 2); ctx.lineTo(x + TS / 2 + (n.x - t.x) * TS / 2, y + TS / 2 + (n.y - t.y) * TS / 2); any = true; }
+      if (!any) { ctx.moveTo(x + TS / 2, y + TS * 0.3); ctx.lineTo(x + TS / 2, y + TS * 0.7); }
+      ctx.stroke(); ctx.setLineDash([]);
+    } else if (t.type === 'yard') {
+      ctx.fillStyle = 'rgba(0,0,0,0.12)'; for (let i = 0; i < 5; i++) ctx.fillRect(x + ((t.x * 7 + t.y * 13 + i * 11) % 9) / 9 * TS, y + ((t.x * 5 + i * 17) % 9) / 9 * TS, TS * 0.06, TS * 0.06);
+    } else if (t.type === 'court') {
+      ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.lineWidth = 1; ctx.strokeRect(x + 2, y + 2, TS - 4, TS - 4);
+    } else if (t.type === 'fence') {
+      ctx.save(); ctx.beginPath(); ctx.rect(x, y, TS, TS); ctx.clip(); ctx.strokeStyle = '#7b8591'; ctx.lineWidth = 1; ctx.globalAlpha = 0.7;
+      for (let i = -TS; i < TS * 2; i += TS * 0.17) { ctx.beginPath(); ctx.moveTo(x + i, y); ctx.lineTo(x + i + TS, y + TS); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x + i, y + TS); ctx.lineTo(x + i + TS, y); ctx.stroke(); } ctx.restore();
+    } else {
+      ctx.fillStyle = 'rgba(255,255,255,0.03)'; if (((t.x + t.y) & 1) === 0) ctx.fillRect(x, y, TS, TS);
+    }
+    if (v) {
+      if (tileLit(w, t)) { const g = ctx.createRadialGradient(x + TS / 2, y + TS / 2, 2, x + TS / 2, y + TS / 2, TS * 0.8); g.addColorStop(0, 'rgba(255,200,110,0.2)'); g.addColorStop(1, 'rgba(255,200,110,0)'); ctx.fillStyle = g; ctx.fillRect(x, y, TS, TS); }
+      else { ctx.fillStyle = 'rgba(4,8,18,0.5)'; ctx.fillRect(x, y, TS, TS); }
+    } else { ctx.fillStyle = 'rgba(8,11,15,0.6)'; ctx.fillRect(x, y, TS, TS); }
+  }
+  // ---- guard line of sight tint (what guards in view can see) ----
+  if (U.los && w.phase === 'players') {
+    for (const [k, lvl] of U.los) {
+      const t = map.grid[0] && tileAt(map, +k.split(',')[0], +k.split(',')[1]); if (!t || !isVisT(t) || !onScreen(t)) continue;
+      const x = sx(t.x), y = sy(t.y); const red = lvl >= 2; ctx.fillStyle = red ? 'rgba(229,72,77,0.3)' : 'rgba(107,134,201,0.18)'; ctx.fillRect(x, y, TS, TS);
+      ctx.save(); ctx.beginPath(); ctx.rect(x, y, TS, TS); ctx.clip(); ctx.strokeStyle = red ? 'rgba(229,72,77,0.3)' : 'rgba(107,134,201,0.22)'; ctx.lineWidth = 1;
+      for (let i = -TS; i < TS; i += TS * 0.22) { ctx.beginPath(); ctx.moveTo(x + i, y + TS); ctx.lineTo(x + i + TS, y); ctx.stroke(); } ctx.restore();
+    }
+  }
+  // ---- owned cells ----
+  for (const r of map.rooms) {
+    if (r.type !== 'cell' || r.owner === null) continue; const t = r.tiles[0]; if (!known(t) || !onScreen(t)) continue;
+    const x = sx(t.x), y = sy(t.y), col = PLAYER_COLORS[r.owner], mine = r.owner === U.viewer;
+    ctx.fillStyle = col; ctx.globalAlpha = mine ? 0.3 : 0.14; ctx.fillRect(x, y, TS, TS); ctx.globalAlpha = 1;
+    ctx.strokeStyle = col; ctx.lineWidth = mine ? Math.max(3, TS * 0.07) : 1.5; ctx.strokeRect(x + 1.5, y + 1.5, TS - 3, TS - 3);
+    if (mine) { // bed
+      ctx.fillStyle = 'rgba(255,255,255,0.22)'; rr(ctx, x + TS * 0.2, y + TS * 0.55, TS * 0.6, TS * 0.26, TS * 0.04); ctx.fill(); ctx.fillStyle = col; ctx.fillRect(x + TS * 0.2, y + TS * 0.55, TS * 0.14, TS * 0.26);
+      if (r.dummy) { ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath(); ctx.ellipse(x + TS * 0.55, y + TS * 0.66, TS * 0.2, TS * 0.07, 0, 0, 7); ctx.fill(); }
+    }
+  }
+  // ---- walls on every unlinked edge, doorways on linked edges between different spaces ----
+  const wt = Math.max(2.5, TS * 0.085);
+  for (const t of map.grid) {
+    if (!t || !known(t) || !onScreen(t) || t.type === 'fence' || t.type === 'gate') continue;
+    const x = sx(t.x), y = sy(t.y), v = isVisT(t);
+    for (const [dx, dy] of [[1, 0], [0, 1], [-1, 0], [0, -1]]) {
+      const n = tileAt(map, t.x + dx, t.y + dy); const nk = n && kindOf(n) === 'exit';
+      if (nk) continue; // the fence draws itself
+      const link = n && linked(map, t, n);
+      if ((dx < 0 || dy < 0) && link) continue; // handle shared edges once from the +x/+y side
+      let ex, ey, ew, eh;
+      if (dx === 1) { ex = x + TS; ey = y; ew = 0; eh = TS; } else if (dx === -1) { ex = x; ey = y; ew = 0; eh = TS; } else if (dy === 1) { ex = x; ey = y + TS; ew = TS; eh = 0; } else { ex = x; ey = y; ew = TS; eh = 0; }
+      if (!link) {
+        if (n && t.type === 'yard' && n.type === 'yard') continue;
+        ctx.strokeStyle = v ? '#05070a' : '#0a0d11'; ctx.lineWidth = wt; ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(ex + ew, ey + eh); ctx.stroke();
+        ctx.strokeStyle = v ? 'rgba(160,172,186,0.5)' : 'rgba(120,130,142,0.3)'; ctx.lineWidth = Math.max(1, wt * 0.3); ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(ex + ew, ey + eh); ctx.stroke();
+      } else if (n.room !== t.room || kindOf(n) !== kindOf(t)) {
+        const locked = (t.room && t.room.locked && t.room !== n.room) || (n.room && n.room.locked && n.room !== t.room) || (n.room && n.room !== t.room && n.room.type === 'cell' && night) || (t.room && t.room !== n.room && t.room.type === 'cell' && night);
+        const mx = ex + ew / 2, my = ey + eh / 2, len = TS * 0.34;
+        ctx.strokeStyle = locked ? '#c58a2a' : 'rgba(210,220,230,0.55)'; ctx.lineWidth = Math.max(2, wt * 0.8);
+        ctx.beginPath(); if (dx) { ctx.moveTo(mx, my - len / 2); ctx.lineTo(mx, my + len / 2); } else { ctx.moveTo(mx - len / 2, my); ctx.lineTo(mx + len / 2, my); } ctx.stroke();
+      }
+    }
+  }
+  // ---- zone outlines, labels, icons ----
+  for (const r of map.rooms) {
+    const t0 = r.tiles.find(known) ; if (!t0) continue;
+    for (const t of r.tiles) {
+      if (!known(t) || !onScreen(t)) continue; const x = sx(t.x), y = sy(t.y);
+      if (restricted(w, p, t)) { ctx.setLineDash([5, 4]); ctx.strokeStyle = 'rgba(229,72,77,0.7)'; ctx.lineWidth = 1.5; ctx.strokeRect(x + wt * 0.7, y + wt * 0.7, TS - wt * 1.4, TS - wt * 1.4); ctx.setLineDash([]); }
+    }
+    if (TS >= 30 && STYLE[r.type][1]) {
+      const kt = r.tiles.filter(known); let cx = 0, cy = 0; kt.forEach(t => { cx += t.x + 0.5; cy += t.y + 0.5; }); cx /= kt.length; cy /= kt.length;
+      let label = STYLE[r.type][1], col = isVisT(t0) ? 'rgba(235,240,245,0.85)' : 'rgba(180,190,200,0.5)', fs = Math.max(8, TS * 0.15);
+      if (r.type === 'cell' && r.owner !== null) { label = r.owner === U.viewer ? 'YOUR CELL' : w.players[r.owner].name.toUpperCase() + "'S CELL"; col = PLAYER_COLORS[r.owner]; fs = Math.max(8, TS * (r.owner === U.viewer ? 0.16 : 0.12)); }
+      ctx.font = '700 ' + fs + 'px ' + MONO; ctx.fillStyle = col; ctx.fillText(label, sx(cx), sy(cy) - (r.type === 'cell' ? TS * 0.3 : 0));
+      if (r.locked || (r.type === 'cell' && night && roomLocked(w, r, p))) lockIcon(ctx, sx(r.tiles[0].x) + TS * 0.82, sy(r.tiles[0].y) + TS * 0.8, TS * 0.22, isVisT(t0) ? C.amber : '#8a6a2a');
+    }
+  }
+  // ---- cameras (any tile), loot bags and salvage gears ----
+  for (const t of map.grid) {
+    if (!t || !t.camera || !known(t) && !p.intel.cams || !onScreen(t)) continue;
+    const x = sx(t.x), y = sy(t.y), off = w.camsOff > 0 || w.powerOff > 0;
+    if (!off && isVisT(t)) { ctx.strokeStyle = 'rgba(229,72,77,0.1)'; ctx.setLineDash([3, 4]); ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x + TS / 2, y + TS / 2, (CFG.CAMERA_RANGE + 0.5) * TS, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
+    ctx.fillStyle = 'rgba(10,12,15,0.8)'; ctx.beginPath(); ctx.arc(x + TS * 0.82, y + TS * 0.2, TS * 0.17, 0, 7); ctx.fill();
+    camIcon(ctx, x + TS * 0.82, y + TS * 0.2, TS * 0.27, off ? '#7a8590' : C.alert);
+  }
+  const bag = (x, y, n, live) => {
+    const s = TS * 0.3; ctx.globalAlpha = live ? 1 : 0.45; ctx.fillStyle = '#b5832a'; ctx.beginPath(); ctx.moveTo(x - s * 0.25, y - s * 0.55); ctx.lineTo(x + s * 0.25, y - s * 0.55); ctx.lineTo(x + s * 0.55, y + s * 0.5); ctx.lineTo(x - s * 0.55, y + s * 0.5); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#2a1d08'; ctx.lineWidth = 1.5; ctx.stroke(); ctx.fillStyle = '#2a1d08'; ctx.font = '800 ' + s * 0.8 + 'px ' + MONO; ctx.fillText(live && n > 0 ? String(n) : '$', x, y + s * 0.12); ctx.globalAlpha = 1;
+  };
+  const gear = (x, y, n, live) => {
+    const s = TS * 0.17; ctx.globalAlpha = live ? 1 : 0.45; ctx.fillStyle = '#8fb4d9'; ctx.beginPath();
+    for (let i = 0; i < 16; i++) { const a = i * Math.PI / 8, rad = i % 2 ? s * 0.8 : s * 1.15; ctx.lineTo(x + Math.cos(a) * rad, y + Math.sin(a) * rad); } ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#1b2733'; ctx.beginPath(); ctx.arc(x, y, s * 0.42, 0, 7); ctx.fill();
+    if (live && n > 0) { ctx.fillStyle = '#fff'; ctx.font = '800 ' + s * 0.9 + 'px ' + MONO; ctx.fillText(String(n), x + s * 1.5, y + s * 0.1); } ctx.globalAlpha = 1;
+  };
+  for (const r of map.rooms) {
+    const d = ROOMS[r.type], kt = r.tiles.filter(known); if (!kt.length || (r.type === 'cell' && r.owner !== null)) continue;
+    const live = kt.some(isVisT), t = kt[0]; if (!onScreen(t)) continue; const x = sx(t.x), y = sy(t.y);
+    if (d.loot && !(r.locked && !live)) { if (r.spots > 0 || !live) bag(x + TS * 0.2, y + TS * 0.8, r.spots, live && r.spots > 0); }
+    if (d.salvage && (r.salv > 0 || !live)) gear(x + TS * 0.62, y + TS * 0.82, r.salv, live && r.salv > 0);
+  }
+  for (const t of map.grid) if (t && t.type === 'yard' && t.spots > 0 && isVisT(t) && onScreen(t)) bag(sx(t.x) + TS * 0.2, sy(t.y) + TS * 0.8, t.spots, true);
+  // ---- route intel ----
+  if (U.routes) for (const rt of U.routes) {
+    ctx.strokeStyle = 'rgba(107,134,201,0.8)'; ctx.setLineDash([6, 5]); ctx.lineWidth = 2; ctx.beginPath();
+    rt.pts.forEach((q, i) => { const px = sx(q.x + 0.5), py = sy(q.y + 0.5); if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py); }); ctx.stroke(); ctx.setLineDash([]);
+    rt.pts.forEach((q, i) => { ctx.fillStyle = 'rgba(107,134,201,0.95)'; ctx.beginPath(); ctx.arc(sx(q.x + 0.5), sy(q.y + 0.5), TS * 0.1, 0, 7); ctx.fill(); ctx.fillStyle = '#fff'; ctx.font = '700 ' + TS * 0.12 + 'px ' + MONO; ctx.fillText(rt.name[0] + (i + 1), sx(q.x + 0.5), sy(q.y + 0.5) - TS * 0.2); });
+  }
+  // ---- move / run options ----
+  if (U.moveOpts && !U.cover && w.phase === 'players' && w.cur === U.viewer) {
+    const pulse = 0.55 + 0.25 * Math.sin(now / 280);
+    for (const o of U.runOpts || []) { const x = sx(o.x) + TS / 2, y = sy(o.y) + TS / 2; ctx.fillStyle = 'rgba(242,180,65,' + (0.35 + 0.2 * Math.sin(now / 280)) + ')'; ctx.beginPath(); ctx.arc(x, y, TS * 0.07, 0, 7); ctx.fill(); }
+    for (const o of U.moveOpts) {
+      const x = sx(o.x), y = sy(o.y); ctx.lineWidth = 2.5; ctx.strokeStyle = o.locked ? 'rgba(229,72,77,0.8)' : 'rgba(242,180,65,' + pulse + ')'; ctx.strokeRect(x + 2, y + 2, TS - 4, TS - 4);
+      if (o.locked) lockIcon(ctx, x + TS / 2, y + TS / 2, TS * 0.3, 'rgba(229,72,77,0.9)');
+    }
+  }
+  if (U.sel) { const x = sx(U.sel.x), y = sy(U.sel.y); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, TS - 2, TS - 2); }
+  // ---- brawls ----
+  for (const b of w.brawls) if (b.left > 0 && vis.has(b.x + ',' + b.y)) { ctx.fillStyle = C.alert; ctx.font = '800 ' + TS * 0.3 + 'px ' + MONO; ctx.fillText('✖', sx(b.x + 0.5), sy(b.y + 0.5) + Math.sin(now / 90) * 2); }
+  // ---- units ----
+  const seeAll = p.intel.seeUntil >= w.round, unitsAt = {};
+  const add = (u, kind, key) => { const k = u.x + ',' + u.y; (unitsAt[k] = unitsAt[k] || []).push({ u, kind, key }); };
+  for (const g of w.guards) { if (g.dead && g.found && !vis.has(g.x + ',' + g.y)) continue; if (g.off && !seeAll) continue; if (vis.has(g.x + ',' + g.y) || seeAll) add(g, 'g', 'g' + g.id); }
+  for (const n of w.npcs) { if (n.off || n.dead) continue; if (vis.has(n.x + ',' + n.y) || (n.role !== 'inmate' && mem.has(n.x + ',' + n.y) && false)) add(n, 'n', 'n' + n.id); }
+  for (const q of w.players) { if (q.status !== 'free' && q.status !== 'solitary') continue; if (q.id === U.viewer || vis.has(q.x + ',' + q.y)) add(q, 'p', 'p' + q.id); }
+  // eye lines: guards that can see the viewer
+  if (p.spotted && p.status === 'free') for (const s of p.spotted) {
+    const g = w.guards.find(g => g.id === s.gid); if (!g) continue; const a = dispPos(U, 'g' + g.id, g.x, g.y), b = dispPos(U, 'p' + p.id, p.x, p.y);
+    ctx.strokeStyle = 'rgba(229,72,77,0.9)'; ctx.setLineDash([]); ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(sx(a.x + 0.5), sy(a.y + 0.5)); ctx.lineTo(sx(b.x + 0.5), sy(b.y + 0.5)); ctx.stroke(); ctx.setLineDash([]);
+    eyeIcon(ctx, (sx(a.x + 0.5) + sx(b.x + 0.5)) / 2, (sy(a.y + 0.5) + sy(b.y + 0.5)) / 2, TS * 0.28, ctx.strokeStyle);
+  }
+  for (const k in unitsAt) {
+    const arr = unitsAt[k];
+    arr.forEach((e, i) => {
+      const n = arr.length, ang = n === 1 ? 0 : (i / n) * Math.PI * 2 + 0.8, off = n === 1 ? 0 : TS * 0.2, d = dispPos(U, e.key, e.u.x, e.u.y);
+      const cx = sx(d.x) + TS / 2 + Math.cos(ang) * off, cy = sy(d.y) + TS / 2 + Math.sin(ang) * off + TS * 0.04, r = TS * 0.19;
+      if (e.kind === 'g') { drawGuard(ctx, e.u, cx, cy, r, w, p, now); const gg = e.u; if (gg.ko <= 0 && !gg.dead && !gg.off && p.status === 'free') { const sees = p.spotted && p.spotted.some(s => s.gid === gg.id); if (sees) eyeIcon(ctx, cx - r * 1.05, cy - r * 1.35, TS * 0.3, '#ff5a5f'); else eyeSlash(ctx, cx - r * 1.05, cy - r * 1.35, TS * 0.3, '#7c95d6'); } } else if (e.kind === 'n') drawNpc(ctx, e.u, cx, cy, r, TS); else drawPlayer(ctx, e.u, cx, cy, r, U.viewer, w, now);
+    });
+  }
+  // ---- noise ripples and heard noises ----
+  for (const rp of U.rip) { const age = (now - rp.t0) / 900; if (age > 1) continue; ctx.strokeStyle = 'rgba(242,180,65,' + (0.6 * (1 - age)) + ')'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(sx(rp.x + 0.5), sy(rp.y + 0.5), TS * (0.2 + Math.min(rp.r, 4) * age), 0, 7); ctx.stroke(); }
+  for (const h of p.heard) {
+    const t = tileAt(map, h.x, h.y); if (!t || isVisT(t)) continue; const cx = sx(h.x) + TS / 2, cy = sy(h.y) + TS / 2, ph = (now / 700) % 1;
+    ctx.strokeStyle = 'rgba(242,180,65,' + (0.7 - ph * 0.6) + ')'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, TS * (0.18 + ph * 0.25), 0, 7); ctx.stroke();
+    ctx.fillStyle = C.amber; ctx.font = '700 ' + TS * 0.26 + 'px ' + MONO; ctx.fillText('?', cx, cy);
+  }
+  if (night || w.powerOff > 0) { const g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.max(W, H) * 0.75); g.addColorStop(0, 'rgba(0,0,10,0)'); g.addColorStop(1, 'rgba(0,0,12,0.45)'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); }
+}
+
+function drawPlayer(ctx, q, cx, cy, r, viewer, w, now) {
+  ctx.save(); if (q.hidden) ctx.globalAlpha = q.id === viewer ? 0.5 : 0.2;
+  if (q.id === viewer && w.cur === viewer && w.phase === 'players') { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, r + 3 + Math.sin(now / 300) * 1.2, 0, 7); ctx.stroke(); }
+  ctx.fillStyle = q.color; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.fill(); ctx.strokeStyle = '#0e1114'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = '#0e1114'; ctx.font = '700 ' + r * 1.15 + 'px "Big Shoulders Stencil Display", Impact, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(q.asleep ? 'z' : String(q.id + 1), cx, cy + 1);
+  if (q.wearing) { ctx.fillStyle = '#3a3f60'; ctx.fillRect(cx - r * 0.7, cy - r * 1.25, r * 1.4, r * 0.4); }
+  if (q.meth) { ctx.fillStyle = q.meth.state === 'high' ? '#7cf' : '#a77'; ctx.fillRect(cx + r * 0.7, cy + r * 0.5, r * 0.5, r * 0.5); }
+  if (q.hidden) { ctx.setLineDash([3, 3]); ctx.strokeStyle = '#fff'; ctx.beginPath(); ctx.arc(cx, cy, r + 2, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
+  ctx.restore();
+}
+function drawGuard(ctx, g, cx, cy, r, w, p, now) {
+  ctx.save(); const down = g.ko > 0 || g.dead;
+  ctx.fillStyle = down ? '#3b4048' : '#1d2a4a'; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.fill(); ctx.strokeStyle = down ? '#6b7480' : '#6b86c9'; ctx.lineWidth = 2; ctx.stroke();
+  if (!down) { ctx.fillStyle = '#3b6ee0'; ctx.beginPath(); ctx.arc(cx, cy - r * 0.15, r * 0.95, Math.PI * 1.1, Math.PI * 1.9); ctx.lineTo(cx, cy - r * 0.15); ctx.fill(); }
+  ctx.fillStyle = '#e8edf3'; ctx.font = '700 ' + r * 0.95 + 'px ' + MONO; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(g.dead ? 'x' : down ? 'z' : g.name[0], cx, cy + r * 0.2);
+  const hunting = g.state === 'hunt', mark = down ? '' : hunting ? '!' : (g.state === 'sus' || g.state === 'investigate' || g.state === 'search') ? '?' : g.state === 'brawl' ? '!' : '';
+  if (mark) { const danger = hunting && true; ctx.fillStyle = danger || g.state === 'brawl' ? C.alert : C.amber; ctx.font = '800 ' + r * 1.6 + 'px ' + MONO; ctx.fillText(mark, cx + r * 0.9, cy - r * 1.15 + Math.sin(now / 120) * 1.5); }
+  const bl = g.blind[p.id]; if (bl && bl.until >= w.round && bl.charges > 0 && !down) { ctx.fillStyle = C.ok; ctx.font = '800 ' + r * 1.1 + 'px ' + MONO; ctx.fillText('$', cx - r * 0.9, cy - r * 1.05); }
+  if (p.intel.corrupt && !down) { ctx.fillStyle = g.corrupt ? C.ok : C.alert; ctx.beginPath(); ctx.arc(cx + r * 0.85, cy + r * 0.85, r * 0.22, 0, 7); ctx.fill(); }
+  ctx.restore();
+}
+function drawNpc(ctx, n, cx, cy, r, TS) {
+  ctx.save(); const col = NPC_COL[n.role] || '#999', down = n.ko > 0;
+  ctx.fillStyle = down ? '#444' : col; rr(ctx, cx - r, cy - r, r * 2, r * 2, r * 0.35); ctx.fill(); ctx.strokeStyle = n.hostile != null ? C.alert : '#0e1114'; ctx.lineWidth = n.hostile != null ? 3 : 2; ctx.stroke();
+  ctx.fillStyle = '#0e1114'; ctx.font = '800 ' + r * 1.1 + 'px ' + MONO; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(down ? 'z' : n.name[0], cx, cy + 1);
+  if (TS >= 46) { ctx.fillStyle = 'rgba(235,240,245,0.85)'; ctx.font = '600 ' + Math.max(8, TS * 0.12) + 'px ' + MONO; ctx.fillText(n.name, cx, cy + r + TS * 0.1); }
+  ctx.restore();
+}
+
+// ===== ui_app.js (v2) : menus, panel, modals, notifications, input =====
+const $ = id => document.getElementById(id);
+const U = { w: null, viewer: 0, zoom: 64, cx: 8, cy: 5.5, W: 300, H: 300, vis: new Set(), mem: new Set(), moveOpts: [], runOpts: [], los: null, routes: [], disp: {}, rip: [], fxSeen: new WeakSet(),
+  sel: null, cover: false, tab: 'actions', acts: [], follow: true, menuTile: null, modal: null, tipsOpen: false, paused: false, routeView: new Set(), noteSeen: {}, lastAlert: 0, lastStrikes: {}, alog: [], saveOk: true };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const setup = { n: 2, mode: 'coop', shared: true, diff: 'medium', seed: Math.floor(Math.random() * 1e6) };
+// ---------- saving: the engine is deterministic, so a save is the setup plus the list of actions taken ----------
+const SAVE_KEY = 'ts_save', SAVE_V = 3;
+function A(a) { const pid = U.viewer, r = act(U.w, pid, a); U.alog.push([pid, a]); saveSoon(); return r; } // failed actions can still change state (rng, hidden), so every call is logged
+let saveT = 0;
+function saveSoon() { clearTimeout(saveT); saveT = setTimeout(saveNow, 150); }
+function saveNow() {
+  try {
+    if (!U.w) return; if (U.w.over) { localStorage.removeItem(SAVE_KEY); return; }
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ v: SAVE_V, setup: U.setup, log: U.alog, round: U.w.round, at: Date.now() })); U.saveOk = true;
+  } catch (e) { U.saveOk = false; }
+}
+function readSave() { try { const j = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); return j && j.v === SAVE_V && j.setup && Array.isArray(j.log) ? j : null; } catch (e) { return null; } }
+function loadSave() {
+  const s = readSave(); if (!s) return false;
+  try {
+    const w = newWorld(s.setup);
+    for (const [pid, a] of s.log) act(w, pid, a);
+    U.setup = s.setup; U.alog = s.log.slice(); U.w = w; enterGame(); return true;
+  } catch (e) { try { localStorage.removeItem(SAVE_KEY); } catch (_) { /* ignore */ } U.w = null; return false; }
+}
+function enterGame() {
+  const w = U.w, n = w.players.length;
+  Object.assign(U, { viewer: 0, sel: null, tab: 'actions', modal: null, menuTile: null, follow: true, disp: {}, rip: [], fxSeen: new WeakSet(), noteSeen: {}, paused: false, tipsOpen: false, routeView: new Set(), lastAlert: w.alert, lastStrikes: {} });
+  for (const q of w.players) U.noteSeen[q.id] = w.notes.length ? w.notes[w.notes.length - 1].id : -1;
+  showScreen('game'); resizeCanvas(); U.zoom = Math.max(48, Math.min(84, Math.floor(Math.min(U.W / 6.2, 84))));
+  $('pause').hidden = true; $('notes').innerHTML = ''; U.cover = n > 1; AUDIO.init(); refresh(true); afterTurnChange(true); saveSoon();
+}
+const now_ = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+
+// ---------- screens ----------
+function showScreen(name) {
+  $('menu').hidden = name !== 'menu'; $('setup').hidden = name !== 'setup'; $('game').hidden = name !== 'game'; $('over').hidden = true;
+  if (name === 'menu') { const s = readSave(); $('m-resume').hidden = !((U.w && !U.w.over) || s); $('m-resume').textContent = (U.w && !U.w.over) ? 'Resume game' : s ? 'Continue saved game (round ' + s.round + ', ' + (DIFFS[s.setup.diff] || DIFFS.medium).name + ')' : 'Resume game'; }
+}
+function renderSetup() {
+  $('seg-n').innerHTML = [1, 2, 3, 4].map(n => `<button class="seg ${setup.n === n ? 'on' : ''}" data-n="${n}">${n}</button>`).join('');
+  $('seg-mode').innerHTML = [['coop', 'Co-op'], ['race', 'Race (PvP)']].map(([m, l]) => `<button class="seg ${setup.mode === m ? 'on' : ''}" data-mode="${m}">${l}</button>`).join('');
+  $('names').innerHTML = Array.from({ length: setup.n }, (_, i) => `<label class="name"><span class="dot" style="background:${PLAYER_COLORS[i]}"></span><input id="nm${i}" maxlength="14" placeholder="Player ${i + 1}" value="${esc(setup['nm' + i] || '')}"></label>`).join('');
+  $('seg-diff').innerHTML = Object.keys(DIFFS).map(k => `<button class="seg ${setup.diff === k ? 'on' : ''}" data-diff="${k}">${DIFFS[k].name}</button>`).join(''); $('diff-hint').textContent = DIFFS[setup.diff].desc;
+  $('shared-row').hidden = setup.mode !== 'coop' || setup.n < 2; $('shared').checked = setup.shared; $('seed').value = setup.seed;
+  $('mode-hint').textContent = setup.mode === 'coop' ? 'Escape together. You share vision and can swap items. The run ends when everyone is out or transferred.' : 'First one over the wall wins. Prisoners can fight and rob each other.';
+}
+function startGame() {
+  const names = Array.from({ length: setup.n }, (_, i) => (setup['nm' + i] || '').trim() || ('Player ' + (i + 1)));
+  U.setup = { seed: setup.seed, players: setup.n, mode: setup.mode, shared: setup.shared, names, diff: setup.diff };
+  U.w = newWorld(U.setup); U.alog = []; for (const q of U.w.players) U.noteSeen[q.id] = -1; enterGame();
+}
+
+// ---------- view refresh ----------
+const me = () => U.w.players[U.viewer];
+function refresh(center) {
+  const w = U.w, p = me();
+  U.vis = teamVisible(w, p); U.mem = new Set(p.memory); if (w.shared) for (const q of w.players) for (const k of q.memory) U.mem.add(k);
+  const turn = w.phase === 'players' && w.cur === U.viewer && p.status === 'free' && !p.pending;
+  U.moveOpts = turn ? moveOptions(w, p) : []; U.runOpts = turn && p.ap >= 2 ? runOptions(w, p) : [];
+  // what guards in view can see (line of sight)
+  U.los = new Map();
+  for (const g of w.guards) {
+    if (g.ko > 0 || g.dead || g.off || !U.vis.has(g.x + ',' + g.y)) continue;
+    const sees = p.spotted && p.spotted.some(s => s.gid === g.id), gt = unitTile(w, g), range = tileLit(w, gt) ? CFG.VISION_LIT : CFG.VISION_LIT;
+    for (const [k] of reach(w, gt, range, true)) { const [x, y] = k.split(',').map(Number), t = tileAt(w.map, x, y); if (!t) continue; if (sightDist(w, g, t) !== Infinity) U.los.set(k, Math.max(U.los.get(k) || 0, sees ? 2 : 1)); }
+  }
+  U.routes = [];
+  for (const slot of U.routeView) if (p.routeIntel.has(slot)) for (const g of w.guards) if (!g.post) U.routes.push({ name: g.name, pts: guardRouteTiles(w, g, slot) });
+  if (center) { U.cx = p.x + 0.5; U.cy = p.y + 0.5; U.follow = true; }
+}
+function toast(msg, bad) {
+  if (!msg) return; const t = $('toast'); t.textContent = msg; t.className = 'show ' + (bad ? 'bad' : 'ok');
+  clearTimeout(toast.t); toast.t = setTimeout(() => { t.className = ''; }, 3600);
+}
+function pumpNotes() {
+  if (U.cover) return; const w = U.w, id = U.viewer, seen = U.noteSeen[id] === undefined ? -1 : U.noteSeen[id];
+  const fresh = w.notes.filter(n => n.id > seen && (n.pid == null || n.pid === id)); U.noteSeen[id] = w.notes.length ? w.notes[w.notes.length - 1].id : seen;
+  if (!fresh.length) return;
+  const box = $('notes');
+  for (const n of fresh.slice(-5)) {
+    const el = document.createElement('div'); el.className = 'note ' + (n.kind === 'bad' ? 'bad' : n.kind === 'good' ? 'good' : ''); el.innerHTML = esc(n.text) + `<small>Round ${n.round}</small>`;
+    el.addEventListener('click', () => el.remove()); box.appendChild(el);
+    if (n.kind !== 'bad') setTimeout(() => el.remove(), 9000);
+  }
+  while (box.children && box.children.length > 5) box.removeChild(box.children[0]);
+  const worst = fresh.find(n => n.kind === 'bad') ? 'bad' : fresh.find(n => n.kind === 'warn') ? 'warn' : fresh.find(n => n.kind === 'good') ? 'good' : null; if (worst) AUDIO.sfx(worst);
+}
+function doAct(a) {
+  const w = U.w; if (w.over) return; const p = me(), before = p.strikes;
+  const r = A(a); if (!r.ok) { toast(r.msg, true); AUDIO.sfx('ui'); renderAll(); return r; }
+  if (r.msg) toast(r.msg, false);
+  const snd = { move: a.sneak ? 'sneak' : 'step', run: 'run', loot: 'loot', salvage: 'loot', work: 'loot', craft: 'click', buy: 'coin', sell: 'coin', intel: 'coin', route: 'coin', bribe: 'coin', buykey: 'coin', unlock: 'lock', hide: 'hide', attack: 'hit', sneakattack: 'hit', hack: 'click', power: 'click', escape: 'win', cutfence: 'win' }[a.t] || 'ui';
+  AUDIO.sfx(snd); if (p.strikes > before) AUDIO.sfx('strike');
+  afterTurnChange(); return r;
+}
+function afterTurnChange(first) {
+  const w = U.w;
+  if (w.over) { refresh(true); renderAll(); showOver(); return; }
+  const pp = w.players.find(q => q.pending);
+  const target = pp ? pp.id : (w.phase === 'players' ? w.cur : U.viewer);
+  if (target !== U.viewer) { U.viewer = target; U.cover = w.players.length > 1; U.sel = null; U.tab = 'actions'; U.modal = null; U.menuTile = null; refresh(true); AUDIO.sfx('ui'); }
+  else refresh(true);
+  if (w.alert > U.lastAlert) AUDIO.sfx('siren'); U.lastAlert = w.alert;
+  AUDIO.setMood(w.alert >= 2 ? 'alert' : isNight(w) ? 'night' : 'calm');
+  U.menuTile = null; renderAll(); pumpNotes();
+}
+
+// ---------- rendering ----------
+function renderAll() { renderTop(); renderPanel(); renderCover(); renderMenu(); renderModal(); renderTips(); const mb = $('mutebtn'); mb.className = 'hbtn' + (AUDIO.state.muted ? ' on' : ''); mb.innerHTML = AUDIO.state.muted ? '&#128263;' : '&#9835;'; }
+function renderTop() {
+  const w = U.w, ph = timeOf(w), dark = ph.phase === 'night' || w.powerOff > 0;
+  $('round').textContent = 'Round ' + w.round + ' \u00b7 ' + DIFFS[w.diff].name;
+  let warn = '';
+  if (ph.phase === 'evening' && ph.left <= CFG.NIGHT_WARN) warn = `<span class="chip warnchip">Lights out in ${ph.left}: go to your cell</span>`;
+  else if (ph.phase === 'night') warn = `<span class="chip dim">Sleep in your cell to skip the night</span>`;
+  $('phase').innerHTML = `<span class="chip ${dark ? 'night' : 'day'}">${dark ? '&#9790;' : '&#9728;'} ${esc(ph.wd)} ${esc(w.powerOff > 0 ? 'Blackout' : ph.name)}<small>${ph.left} left</small></span> ${warn}`;
+  $('alert').innerHTML = `<span class="lbl">Alert</span>` + [1, 2, 3].map(i => `<i class="pip ${w.alert >= i ? 'hot' : ''}"></i>`).join('') + (w.camsOff > 0 ? `<span class="chip dim">Cams off ${w.camsOff}</span>` : '');
+}
+function inv(p) { return Object.entries(p.items).map(([i, q]) => `<span class="item" title="${esc(ITEMS[i].desc)}"><b>${esc(ITEMS[i].icon)}</b>${esc(ITEMS[i].name)}${isContraband(i) ? ' <em title="contraband">*</em>' : ''}${q > 1 ? ' <em>x' + q + '</em>' : ''}</span>`).join('') || '<span class="muted">Empty pockets.</span>'; }
+function renderPanel() {
+  const w = U.w, p = me(), t = ptile(w, p), myTurn = w.phase === 'players' && w.cur === U.viewer && p.status === 'free' && !p.pending;
+  const maxAp = CFG.AP + (p.meth ? (p.meth.state === 'high' ? 1 : -1) : 0), lvl = trespassLevel(w, p);
+  let h = (w.players.length < 2 ? '' : '<div class="roster">' + w.players.map(q => `<span class="rchip ${q.id === U.viewer ? 'on' : ''} ${q.status !== 'free' ? 'out' : ''}" style="--c:${q.color}"><i></i>${esc(q.name)}${q.status === 'escaped' ? ' &#10003;' : q.status === 'transferred' ? ' &#10005;' : q.status === 'solitary' ? ' (solitary)' : ''}</span>`).join('') + '</div>');
+  h += `<div class="card"><div class="cardhead"><b style="color:${p.color}">${esc(p.name)}</b><span class="cigs" title="Cigarettes are currency and cannot be confiscated"><u>C</u> ${p.items.cigs || 0}</span></div>
+   <div class="stats"><div><span class="lbl">HP</span>${Array.from({ length: CFG.HP_PRISONER }, (_, i) => `<i class="seg2 ${i < p.hp ? 'hp' : ''}"></i>`).join('')}</div>
+   <div><span class="lbl">AP</span>${Array.from({ length: Math.max(1, maxAp) }, (_, i) => `<i class="ap ${i < p.ap ? 'on' : ''}"></i>`).join('')}</div>
+   <div><span class="lbl">Strikes</span>${[0, 1, 2].map(i => `<i class="strike ${i < p.strikes ? 'on' : ''}"></i>`).join('')}</div></div>
+   <div class="where">${esc(t.name)} ${inOwnCell(w, p) ? '<span class="tag you">your cell</span>' : ''}<span class="tag ${restricted(w, p, t) ? 'bad' : 'good'}">${restricted(w, p, t) ? 'restricted' : 'allowed'}</span> <span class="tag">${tileLit(w, t) ? 'lit' : 'dark'}</span>${p.hidden ? ' <span class="tag good">hidden</span>' : ''}${p.wearing ? ' <span class="tag">in uniform</span>' : ''}${p.asleep ? ' <span class="tag">asleep</span>' : ''}
+   ${p.meth ? `<span class="meth ${p.meth.state === 'crash' ? 'crash' : ''}">${p.meth.state === 'high' ? 'HIGH' : 'CRASH'} ${p.meth.left}</span>` : ''}</div></div>`;
+  if (myTurn && lvl) h += `<div class="warn ${lvl === 'sus' ? 'soft' : ''}"><span class="mark ${lvl === 'sus' ? 'sus' : 'dan'}">${lvl === 'sus' ? '?' : '!'}</span> ${lvl === 'sus' ? 'You are somewhere you should not be. Guards will find this suspicious.' : 'You are out of bounds. A guard who sees you will hunt you.'}</div>`;
+  if (myTurn && p.spotted && p.spotted.length) h += `<div class="warn ${p.spotted.some(s => s.hunting || s.level === 'danger') ? '' : 'soft'}">${p.spotted.length} guard${p.spotted.length > 1 ? 's have' : ' has'} line of sight to you (eye lines on the map).</div>`;
+  if (myTurn && p.wanted) h += '<div class="warn">You are wanted: your bed was empty. Guards are searching everywhere.</div>';
+  h += `<div class="tabs">${['actions', 'pack', 'intel', 'log'].map(k => `<button class="tab ${U.tab === k ? 'on' : ''}" data-tab="${k}">${{ actions: 'Actions', pack: 'Pack', intel: 'Intel', log: 'Log' }[k]}</button>`).join('')}</div>`;
+  if (U.tab === 'actions') {
+    U.acts = myTurn ? getActions(w, p) : [];
+    if (!myTurn) h += `<p class="muted pad">${w.over ? 'Game over.' : p.pending ? 'Answer the guard first.' : 'Waiting for the next turn.'}</p>`;
+    else {
+      h += '<p class="hint">Tap a glowing tile to move, sneak or run (3 tiles, 2 AP, loud). Small amber dots mark run targets.</p><div class="acts">';
+      U.acts.forEach((a, i) => { h += `<button class="act ${a.enabled ? '' : 'off'}" data-i="${i}" ${a.enabled ? '' : 'aria-disabled="true"'}><span class="al">${esc(a.label)}</span>${a.ap ? `<span class="ap-b">${a.ap} AP</span>` : ''}${a.why ? `<small>${esc(a.why)}</small>` : (a.note ? `<small>${esc(a.note)}</small>` : '')}</button>`; });
+      h += '</div>';
+    }
+  } else if (U.tab === 'pack') {
+    h += `<div class="pack">${inv(p)}</div>`; const wp = weaponOf(p);
+    h += `<p class="hint">Best weapon: <b>${wp.id}</b> (${wp.dmg} dmg). Items marked * are contraband: a guard who catches you with them takes them. Store them in your cell stash. Cigarettes are safe.</p>`;
+    if (U.sel) { const s = U.sel; h += `<div class="seltile"><b>${esc(s.name)}</b> <span class="tag ${restricted(w, p, s) ? 'bad' : 'good'}">${restricted(w, p, s) ? 'restricted' : 'allowed'}</span> <span class="tag">${tileLit(w, s) ? 'lit' : 'dark'}</span></div>`; }
+  } else if (U.tab === 'intel') {
+    const slots = [...p.routeIntel];
+    h += '<p class="hint">Guards repeat the same patrol in the same weekday slot. Buy routes from the Informant in the Library.</p>';
+    h += slots.length ? '<div class="opts">' + slots.map(s => `<button data-route="${s}" class="${U.routeView.has(s) ? 'on' : ''}">${esc(slotLabel(s))}<small>${U.routeView.has(s) ? 'shown on map' : 'tap to show'}</small></button>`).join('') + '</div>' : '<p class="muted">No routes bought yet.</p>';
+    h += `<p class="hint" style="margin-top:10px">Camera map: ${p.intel.cams ? 'known' : 'not bought'}. Corrupt guards: ${p.intel.corrupt ? 'known (green dot = takes bribes)' : 'not bought'}.</p>`;
+    h += `<p class="hint">Alarm-off bribes: ${p.alarmOff.size ? [...p.alarmOff].map(slotLabel).join(', ') : 'none'}.</p>`;
+  } else {
+    const seen = w.log.filter(l => logVisible(l, p)).slice(-40).reverse();
+    h += '<div class="log">' + (seen.map(l => `<p class="l-${l.kind}"><em>R${l.round}</em> ${esc(l.text)}</p>`).join('') || '<p class="muted">Nothing yet.</p>') + '</div>';
+  }
+  $('panel-body').innerHTML = h;
+  $('endturn').disabled = !myTurn; $('endturn').textContent = myTurn ? (p.ap > 0 ? 'End turn (' + p.ap + ' AP left)' : 'End turn') : 'Not your turn';
+}
+function logVisible(l, p) {
+  if (l.pid === p.id || (l.pid == null && l.x == null)) return true; if (l.pid != null && l.pid !== p.id) return false;
+  if (l.kind === 'strike' || l.kind === 'escape' || l.kind === 'alert') return true;
+  return l.x != null && U.vis.has(l.x + ',' + l.y);
+}
+function renderCover() {
+  const w = U.w, c = $('cover'); c.hidden = !(U.cover && !w.over); if (c.hidden) return;
+  const p = me(); c.innerHTML = `<div class="coverbox"><span class="lbl">${p.pending ? 'A guard has stopped' : 'Hand the device to'}</span><h2 style="color:${p.color}">${esc(p.name)}</h2><p class="muted">${esc(timeOf(w).wd)} ${esc(timeOf(w).name)}, round ${w.round}. Eyes only. Others look away.</p><button id="ready" class="primary">I'm ready</button></div>`;
+}
+function renderMenu() {
+  const m = $('movemenu'), t = U.menuTile; if (!t || U.cover || U.modal || U.paused) { m.hidden = true; return; }
+  const w = U.w, p = me(), mo = U.moveOpts.find(o => o.x === t.x && o.y === t.y), ro = U.runOpts.find(o => o.x === t.x && o.y === t.y);
+  if (!mo && !ro) { m.hidden = true; return; }
+  const sx = (t.x - U.cx) * U.zoom + U.W / 2 + U.zoom / 2, sy = (t.y - U.cy) * U.zoom + U.H / 2;
+  m.hidden = false; m.style.left = Math.max(8, Math.min(U.W - 190, sx - 90)) + 'px'; m.style.top = Math.max(8, Math.min(U.H - 130, sy - 110)) + 'px';
+  const r = restricted(w, p, t);
+  m.innerHTML = `<b>${esc(t.name)}</b> <span class="tag ${r ? 'bad' : 'good'}">${r ? 'restricted' : 'allowed'}</span>` + (mo && mo.locked ? `<p class="muted">${esc(mo.why)}</p>` :
+    `<div class="mrow">${mo ? `<button data-mv="0" ${p.ap < 1 ? 'disabled' : ''}>Move <small>1 AP</small></button><button data-mv="1" ${p.ap < 2 ? 'disabled' : ''}>Sneak <small>2 AP</small></button>` : ''}${ro ? `<button data-mv="2" ${p.ap < 2 ? 'disabled' : ''}>Run <small>2 AP, loud</small></button>` : ''}</div>`);
+}
+function offerBtns(list, attr, p) { return '<div class="opts">' + list.map(o => `<button ${attr}="${o.k}" ${(p.items.cigs || 0) < o.amount ? 'disabled' : ''}>${esc(o.label)}<small>${o.amount} C</small></button>`).join('') + '</div>'; }
+function renderModal() {
+  const el = $('modal'), w = U.w, p = me(); let mo = U.modal;
+  if (U.cover || U.paused) { el.hidden = true; return; }
+  if (p.pending) mo = { type: 'pending' };
+  if (!mo) { el.hidden = true; return; }
+  el.hidden = false; let h = '';
+  if (mo.type === 'pending') {
+    const d = confrontData(w, p), pd = p.pending;
+    if (pd.type === 'confront') {
+      const sus = d.kind && /trespass|running|stealing|dealing|bribe|lingering/.test(d.kind);
+      h = `<div class="mhead"><b>${esc(d.guard)} stops you</b></div><p class="muted" style="margin:0">Reason: ${esc(d.kind)}. <span class="mark ${sus ? 'sus' : 'dan'}">${sus ? '?' : '!'}</span> ${sus ? 'Cooperating costs your contraband but no strike.' : 'He treats you as dangerous: cooperating means a strike.'}</p>
+        <h4>Your move</h4><button class="row" data-res="cooperate"><span>Cooperate <small>Let him search you</small></span></button>
+        <h4>Pay him off (${d.price} C normal)</h4>${offerBtns(d.offers, 'data-resbribe', p)}
+        <button class="row" data-res="attack"><span>Attack ${esc(d.guard)} <small>Weapon: ${weaponOf(p).id}. Risky.</small></span></button>
+        <button class="row" data-res="run"><span>Run for it <small>Roll to break away. He keeps chasing.</small></span></button>`;
+    } else if (pd.type === 'counter') {
+      h = `<div class="mhead"><b>Counteroffer</b></div><p style="margin:0">The guard wants <b>${pd.price} cigarettes</b>. You have ${p.items.cigs || 0}.</p><button class="row" data-res="pay" ${(p.items.cigs || 0) < pd.price ? 'disabled' : ''}><span>Pay ${pd.price} C</span></button><button class="row" data-res="refuse"><span>Refuse <small>He may walk away or report you</small></span></button>`;
+    } else {
+      const n = w.npcs.find(n => n.id === pd.nid);
+      h = `<div class="mhead"><b>${esc(n ? n.name : 'An inmate')} saw you</b></div><p style="margin:0">He wants <b>${pd.amount} cigarettes</b> to keep quiet. He might sell you out anyway.</p><button class="row" data-res="pay" ${(p.items.cigs || 0) < pd.amount ? 'disabled' : ''}><span>Pay ${pd.amount} C</span></button><button class="row" data-res="refuse"><span>Refuse <small>Risky: he may go to the guards</small></span></button>`;
+    }
+  } else if (mo.type === 'shop') {
+    const s = shopFor(w, p); if (!s) { U.modal = null; el.hidden = true; return; }
+    h = `<div class="mhead"><b>${esc(s.name)}</b><span class="cigs"><u>C</u> ${p.items.cigs || 0}</span></div>`;
+    if (s.sells) h += '<h4>Buy</h4>' + (s.sells.map(x => `<button class="row" data-buy="${x.item}" ${(p.items.cigs || 0) < x.price ? 'disabled' : ''}><span>${esc(ITEMS[x.item].name)} <small>${esc(ITEMS[x.item].desc)}</small></span><b>${x.price} C</b></button>`).join('') || '<p class="muted">Nothing for sale.</p>');
+    if (s.buys && s.buys.length) h += '<h4>Sell</h4>' + s.buys.map(x => `<button class="row" data-sell="${x.item}"><span>${esc(ITEMS[x.item].name)} <em>x${x.qty}</em></span><b>+${x.price} C</b></button>`).join('');
+    if (s.intel) h += '<h4>Intel</h4>' + s.intel.map(x => `<button class="row" data-intel="${x.kind}" ${(p.items.cigs || 0) < x.price ? 'disabled' : ''}><span>${esc(x.label)}</span><b>${x.price} C</b></button>`).join('');
+    if (s.slots) { h += `<h4>Guard patrol routes (${CFG.ROUTE_PRICE} C each)</h4>`; for (let d = 0; d < 7; d++) h += `<div class="lbl" style="margin:8px 0 4px">${CFG.DAYS[d]}</div><div class="opts">` + s.slots.slice(d * 4, d * 4 + 4).map(x => `<button data-buyroute="${x.slot}" ${x.owned || (p.items.cigs || 0) < x.price ? 'disabled' : ''}>${esc(x.label.split(' ').slice(1).join(' '))}<small>${x.owned ? 'owned' : x.price + ' C'}</small></button>`).join('') + '</div>'; }
+    h += '<button class="primary" data-close="1">Done</button>';
+  } else if (mo.type === 'stash') {
+    const d = stashData(w, p), line = (it, n, dir) => `<div class="row"><span>${esc(ITEMS[it].name)} <em>x${n}</em></span><span class="giverow"><button data-stash="${dir}|${it}|1">1</button>${n > 1 ? `<button data-stash="${dir}|${it}|${n}">all</button>` : ''}</span></div>`;
+    h = '<div class="mhead"><b>Your stash</b></div><p class="muted" style="margin:0;font-size:12.5px">Only you can open it. If you get strike 1 everything in it is confiscated.</p><h4>Stored</h4>' + (Object.entries(d.stash).map(([i, n]) => line(i, n, 'out')).join('') || '<p class="muted">Empty.</p>') + '<h4>Carrying</h4>' + (Object.entries(d.carry).filter(([i]) => i !== 'cigs').map(([i, n]) => line(i, n, 'in')).join('') || '<p class="muted">Nothing to store.</p>') + '<button class="primary" data-close="1">Done</button>';
+  } else if (mo.type === 'give') {
+    const others = playersAt(w, p.x, p.y, p.id);
+    h = '<div class="mhead"><b>Give an item</b></div>' + others.map(q => `<h4 style="color:${q.color}">${esc(q.name)}</h4><div class="giverow">` + Object.entries(p.items).map(([i, n]) => `<button data-give="${q.id}|${i}|1">${esc(ITEMS[i].name)} x1</button>` + (n > 1 ? `<button data-give="${q.id}|${i}|${n}">all ${n}</button>` : '')).join('') + '</div>').join('') + '<button class="primary" data-close="1">Cancel</button>';
+  } else if (mo.type === 'bribe') {
+    const d = bribeData(w, p, mo.gid); if (!d) { U.modal = null; el.hidden = true; return; }
+    mo.purpose = mo.purpose || 'blind'; mo.phase = mo.phase || 'night'; mo.offer = mo.offer || 'fair'; const pu = d.purposes.find(x => x.k === mo.purpose);
+    h = `<div class="mhead"><b>Bribe ${esc(d.name)}</b><span class="cigs"><u>C</u> ${p.items.cigs || 0}</span></div>${d.known ? `<p class="muted" style="margin:0">${d.corrupt ? 'Known to take bribes.' : 'Honest. He will arrest you for trying!'}</p>` : '<p class="muted" style="margin:0">You do not know if he takes bribes. A refusal may cost a strike.</p>'}
+      <h4>What for?</h4><div class="opts">${d.purposes.map(x => `<button data-bp="${x.k}" class="${mo.purpose === x.k ? 'on' : ''}">${esc(x.label)}<small>about ${x.price} C</small></button>`).join('')}</div><p class="muted" style="margin:4px 0 0;font-size:12.5px">${esc(pu.desc)}</p>`;
+    if (mo.purpose === 'alarm') h += '<h4>Which time of day?</h4><div class="opts">' + d.phases.map(x => `<button data-bph="${x.id}" class="${mo.phase === x.id ? 'on' : ''}">${esc(x.name)}</button>`).join('') + '</div>';
+    h += '<h4>Your offer</h4><div class="opts">' + pu.offers.map(o => `<button data-bo="${o.k}" class="${mo.offer === o.k ? 'on' : ''}" ${(p.items.cigs || 0) < o.amount ? 'disabled' : ''}>${esc(o.label)}<small>${o.amount} C</small></button>`).join('') + '</div>';
+    h += '<p class="muted" style="font-size:12.5px;margin:6px 0 0">Low offers may be refused or countered. Other guards who watch you do it get suspicious.</p><button class="primary" data-dobribe="1">Offer the bribe (1 AP)</button><button class="ghost" data-close="1">Cancel</button>';
+  } else if (mo.type === 'hire') {
+    const rooms = w.map.rooms.filter(r => ['common', 'dining', 'court', 'showers', 'library', 'workshop', 'laundry', 'kitchen'].includes(r.type)); mo.rid = mo.rid === undefined ? rooms[0].id : mo.rid; mo.phase = mo.phase || 'day';
+    const n = w.npcs.find(n => n.id === mo.nid);
+    h = `<div class="mhead"><b>Hire ${esc(n ? n.name : 'inmate')}</b><span class="cigs"><u>C</u> ${p.items.cigs || 0}</span></div><p class="muted" style="margin:0">8 cigarettes. He starts a brawl in the place and time you choose. Guards rush to it, leaving other posts thin.</p>
+      <h4>Where?</h4><div class="opts">${rooms.map(r => `<button data-hr="${r.id}" class="${mo.rid === r.id ? 'on' : ''}">${esc(r.name)}</button>`).join('')}</div>
+      <h4>When?</h4><div class="opts">${CFG.PHASES.filter(x => x.id !== 'night').map(x => `<button data-hp="${x.id}" class="${mo.phase === x.id ? 'on' : ''}">${esc(x.name)}<small>${esc(slotLabel(nextSlot(w, x.id)))}</small></button>`).join('')}</div>
+      <button class="primary" data-dohire="1" ${(p.items.cigs || 0) < 8 ? 'disabled' : ''}>Pay 8 C</button><button class="ghost" data-close="1">Cancel</button>`;
+  }
+  el.innerHTML = '<div class="msheet">' + h + '</div>';
+}
+function renderTips() {
+  const el = $('tips'); el.hidden = !U.tipsOpen || U.cover; if (el.hidden) return;
+  el.innerHTML = '<h4>What to do next</h4><ul>' + getTips(U.w, me()).map(t => `<li>${esc(t)}</li>`).join('') + '</ul>';
+}
+function showOver() {
+  const w = U.w, r = w.result, o = $('over'); o.hidden = false; let title, sub;
+  if (r.type === 'race') { title = w.players[r.winner].name + ' is free'; sub = 'First over the wall in round ' + w.round + '.'; }
+  else if (r.type === 'full') { title = 'Everyone made it out'; sub = 'A clean break in ' + w.round + ' rounds.'; }
+  else if (r.type === 'partial') { title = r.escaped.length + ' of ' + w.players.length + ' escaped'; sub = 'The rest are in the high security block.'; }
+  else { title = 'Transferred. All of you.'; sub = 'Three strikes. The prison wins this time.'; }
+  AUDIO.sfx(r.type === 'lost' ? 'lose' : 'win');
+  o.innerHTML = `<div class="overbox"><span class="lbl">Round ${w.round} / seed ${w.seed}</span><h2>${esc(title)}</h2><p>${esc(sub)}</p><div class="results">${w.players.map(p => `<div><b style="color:${p.color}">${esc(p.name)}</b> <span>${esc(p.status)}</span> <span>${p.strikes} strike${p.strikes === 1 ? '' : 's'}</span></div>`).join('')}</div>
+   <div class="btns"><button id="again" class="primary">Same prison again</button><button id="newgame">Main menu</button></div></div>`;
+}
+
+// ---------- events ----------
+function openPause(v) { if (v) { saveNow(); $('p-savemsg').textContent = U.saveOk ? 'Progress is saved automatically on this device.' : 'Saving is not available in this browser, so progress will be lost when you close the page.'; } U.paused = v; $('pause').hidden = !v; $('p-howbox').hidden = true; if (v) AUDIO.sfx('ui'); renderMenu(); renderModal(); }
+function openSettings(v) { const s = AUDIO.state; $('settings').hidden = !v; if (v) { $('a-mute').checked = s.muted; $('a-music').value = Math.round(s.music * 100); $('a-sfx').value = Math.round(s.sfx * 100); } }
+function resolve(c, offer) {
+  const p = me(), r = A({ t: 'resolve', c, offer }); toast(r.msg, !r.ok); AUDIO.sfx(c === 'attack' ? 'hit' : c === 'pay' || c === 'bribe' ? 'coin' : 'ui'); afterTurnChange();
+}
+document.addEventListener('pointerdown', () => AUDIO.init(), { once: true });
+document.addEventListener('click', e => {
+  const t = e.target; AUDIO.init();
+  const b = t.closest('[data-n]'); if (b && !$('setup').hidden) { setup.n = +b.dataset.n; renderSetup(); return; }
+  const df = t.closest('[data-diff]'); if (df) { setup.diff = df.dataset.diff; renderSetup(); return; }
+  const m = t.closest('[data-mode]'); if (m) { setup.mode = m.dataset.mode; renderSetup(); return; }
+  if (t.closest('#m-new')) { showScreen('setup'); renderSetup(); return; }
+  if (t.closest('#m-resume')) { if (U.w && !U.w.over) { showScreen('game'); resizeCanvas(); refresh(false); renderAll(); } else if (!loadSave()) toast('The save could not be loaded.', true); return; }
+  if (t.closest('#m-how')) { $('how').hidden = !$('how').hidden; return; }
+  if (t.closest('#m-set') || t.closest('#p-set')) { openSettings(true); return; }
+  if (t.closest('#a-close')) { openSettings(false); renderAll(); return; }
+  if (t.closest('#s-back')) { showScreen('menu'); return; }
+  if (t.closest('#start')) { startGame(); return; }
+  if (t.closest('#pausebtn')) { openPause(true); return; }
+  if (t.closest('#p-resume')) { openPause(false); return; }
+  if (t.closest('#p-how')) { const hb = $('p-howbox'); hb.innerHTML = $('how').innerHTML; hb.className = 'phow'; hb.hidden = !hb.hidden; return; }
+  if (t.closest('#p-restart')) { openPause(false); startGame(); return; }
+  if (t.closest('#p-quit')) { openPause(false); showScreen('menu'); return; }
+  if (t.closest('#mutebtn')) { AUDIO.setMuted(!AUDIO.state.muted); renderAll(); return; }
+  if (t.closest('#tipbtn')) { U.tipsOpen = !U.tipsOpen; renderTips(); return; }
+  if (U.paused || !U.w || $('game').hidden) return;
+  if (t.closest('#ready')) { U.cover = false; refresh(true); renderAll(); pumpNotes(); return; }
+  const tab = t.closest('[data-tab]'); if (tab) { U.tab = tab.dataset.tab; renderPanel(); return; }
+  const rt = t.closest('[data-route]'); if (rt) { const s = rt.dataset.route; U.routeView.has(s) ? U.routeView.delete(s) : U.routeView.add(s); refresh(false); renderPanel(); return; }
+  const rs = t.closest('[data-res]'); if (rs) { resolve(rs.dataset.res); return; }
+  const rb = t.closest('[data-resbribe]'); if (rb) { resolve('bribe', rb.dataset.resbribe); return; }
+  const ab = t.closest('.act'); if (ab) {
+    const a = U.acts[+ab.dataset.i]; if (!a) return;
+    if (!a.enabled) { toast(a.why || 'Not available.', true); AUDIO.sfx('ui'); return; }
+    if (a.ui === 'shop') { const r = doAct(a.a); if (r && r.ok) { U.modal = { type: 'shop' }; renderAll(); } return; }
+    if (a.ui === 'stash') { const r = doAct(a.a); if (r && r.ok) { U.modal = { type: 'stash' }; renderAll(); } return; }
+    if (a.ui === 'give') { U.modal = { type: 'give' }; renderModal(); return; }
+    if (a.ui === 'bribe') { U.modal = { type: 'bribe', gid: a.gid }; renderModal(); return; }
+    if (a.ui === 'hire') { U.modal = { type: 'hire', nid: a.nid }; renderModal(); return; }
+    doAct(a.a); return;
+  }
+  if (t.closest('#endturn')) { doAct({ t: 'end' }); return; }
+  const mv = t.closest('[data-mv]'); if (mv && U.menuTile) { const o = U.menuTile, k = mv.dataset.mv; doAct(k === '2' ? { t: 'run', x: o.x, y: o.y } : { t: 'move', x: o.x, y: o.y, sneak: k === '1' }); return; }
+  const by = t.closest('[data-buy]'); if (by) { const r = A({ t: 'buy', item: by.dataset.buy }); toast(r.msg, !r.ok); AUDIO.sfx(r.ok ? 'coin' : 'ui'); renderAll(); return; }
+  const sl = t.closest('[data-sell]'); if (sl) { const r = A({ t: 'sell', item: sl.dataset.sell }); toast(r.msg, !r.ok); AUDIO.sfx(r.ok ? 'coin' : 'ui'); renderAll(); return; }
+  const it = t.closest('[data-intel]'); if (it) { const r = A({ t: 'intel', kind: it.dataset.intel }); toast(r.msg, !r.ok); AUDIO.sfx(r.ok ? 'coin' : 'ui'); refresh(false); renderAll(); return; }
+  const br = t.closest('[data-buyroute]'); if (br) { const r = A({ t: 'route', slot: br.dataset.buyroute }); toast(r.msg, !r.ok); AUDIO.sfx(r.ok ? 'coin' : 'ui'); if (r.ok) U.routeView.add(br.dataset.buyroute); refresh(false); renderAll(); return; }
+  const st = t.closest('[data-stash]'); if (st) { const [dir, item, qty] = st.dataset.stash.split('|'); const r = A({ t: 'stashmove', dir, item, qty: +qty }); if (!r.ok) toast(r.msg, true); AUDIO.sfx('click'); renderAll(); return; }
+  const gv = t.closest('[data-give]'); if (gv) { const [to, item, qty] = gv.dataset.give.split('|'); U.modal = null; doAct({ t: 'give', to: +to, item, qty: +qty }); return; }
+  const bp = t.closest('[data-bp]'); if (bp && U.modal) { U.modal.purpose = bp.dataset.bp; renderModal(); return; }
+  const bph = t.closest('[data-bph]'); if (bph && U.modal) { U.modal.phase = bph.dataset.bph; renderModal(); return; }
+  const bo = t.closest('[data-bo]'); if (bo && U.modal) { U.modal.offer = bo.dataset.bo; renderModal(); return; }
+  if (t.closest('[data-dobribe]') && U.modal) { const m = U.modal; U.modal = null; doAct({ t: 'bribe', gid: m.gid, purpose: m.purpose, offer: m.offer, phase: m.phase }); return; }
+  const hr = t.closest('[data-hr]'); if (hr && U.modal) { U.modal.rid = +hr.dataset.hr; renderModal(); return; }
+  const hp = t.closest('[data-hp]'); if (hp && U.modal) { U.modal.phase = hp.dataset.hp; renderModal(); return; }
+  if (t.closest('[data-dohire]') && U.modal) { const m = U.modal; U.modal = null; doAct({ t: 'hire', nid: m.nid, rid: m.rid, phase: m.phase }); return; }
+  if (t.closest('[data-close]') || t.id === 'modal') { if (!me().pending) { U.modal = null; renderModal(); renderPanel(); } return; }
+  if (t.closest('#again')) { startGame(); return; }
+  if (t.closest('#newgame')) { U.w = null; setup.seed = Math.floor(Math.random() * 1e6); showScreen('menu'); return; }
+  if (t.closest('#zin')) { U.zoom = Math.min(120, U.zoom * 1.2); renderMenu(); return; }
+  if (t.closest('#zout')) { U.zoom = Math.max(26, U.zoom / 1.2); renderMenu(); return; }
+  if (t.closest('#zhome')) { refresh(true); renderMenu(); return; }
+});
+$('shared').addEventListener('change', e => { setup.shared = e.target.checked; });
+$('seed').addEventListener('input', e => { setup.seed = parseInt(e.target.value, 10) || 0; });
+$('reseed').addEventListener('click', () => { setup.seed = Math.floor(Math.random() * 1e6); $('seed').value = setup.seed; });
+$('names').addEventListener('input', e => { if (e.target.id && e.target.id.startsWith('nm')) setup[e.target.id] = e.target.value; });
+$('a-mute').addEventListener('change', e => { AUDIO.setMuted(e.target.checked); renderAll(); });
+$('a-music').addEventListener('input', e => AUDIO.setMusic(+e.target.value / 100));
+$('a-sfx').addEventListener('input', e => { AUDIO.setSfx(+e.target.value / 100); });
+$('a-sfx').addEventListener('change', () => AUDIO.sfx('coin'));
+
+// ---------- canvas input ----------
+const cv = $('cv'), ctx = cv.getContext('2d');
+function resizeCanvas() {
+  const r = $('stage').getBoundingClientRect(), d = Math.min(2, window.devicePixelRatio || 1);
+  U.W = Math.max(100, r.width); U.H = Math.max(100, r.height); cv.width = U.W * d; cv.height = U.H * d; cv.style.width = U.W + 'px'; cv.style.height = U.H + 'px'; U.dpr = d;
+}
+window.addEventListener('resize', () => { resizeCanvas(); renderMenu(); });
+if (window.ResizeObserver) new ResizeObserver(() => { resizeCanvas(); }).observe($('stage'));
+const ptrs = new Map(); let drag = null, pinch = null;
+const tileFromScreen = (px, py) => tileAt(U.w.map, Math.floor((px - U.W / 2) / U.zoom + U.cx), Math.floor((py - U.H / 2) / U.zoom + U.cy));
+cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); const r = cv.getBoundingClientRect(); ptrs.set(e.pointerId, { x: e.clientX - r.left, y: e.clientY - r.top });
+  if (ptrs.size === 1) drag = { sx: e.clientX, sy: e.clientY, cx: U.cx, cy: U.cy, moved: false }; if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), z: U.zoom }; drag = null; } });
+cv.addEventListener('pointermove', e => { if (!ptrs.has(e.pointerId)) return; const r = cv.getBoundingClientRect(); ptrs.set(e.pointerId, { x: e.clientX - r.left, y: e.clientY - r.top });
+  if (pinch && ptrs.size === 2) { const [a, b] = [...ptrs.values()]; U.zoom = Math.max(26, Math.min(120, pinch.z * Math.hypot(a.x - b.x, a.y - b.y) / pinch.d)); renderMenu(); return; }
+  if (drag) { const dx = e.clientX - drag.sx, dy = e.clientY - drag.sy; if (Math.abs(dx) + Math.abs(dy) > 7) drag.moved = true; if (drag.moved) { U.cx = drag.cx - dx / U.zoom; U.cy = drag.cy - dy / U.zoom; U.follow = false; U.menuTile = null; renderMenu(); } } });
+cv.addEventListener('pointerup', e => { const r = cv.getBoundingClientRect(); ptrs.delete(e.pointerId); if (pinch && ptrs.size < 2) { pinch = null; return; }
+  if (drag && !drag.moved && !U.cover && !U.paused) { const t = tileFromScreen(e.clientX - r.left, e.clientY - r.top); handleTap(t); } drag = null; });
+cv.addEventListener('pointercancel', e => { ptrs.delete(e.pointerId); drag = null; pinch = null; });
+cv.addEventListener('wheel', e => { e.preventDefault(); U.zoom = Math.max(26, Math.min(120, U.zoom * (e.deltaY < 0 ? 1.1 : 0.9))); renderMenu(); }, { passive: false });
+function handleTap(t) {
+  U.sel = t; U.menuTile = null;
+  if (t && (U.moveOpts.some(o => o.x === t.x && o.y === t.y) || U.runOpts.some(o => o.x === t.x && o.y === t.y))) U.menuTile = t;
+  else if (t) { const k = tkey(t); if (U.vis.has(k) || U.mem.has(k)) toast(t.name + (restricted(U.w, me(), t) ? ' (restricted)' : ' (allowed)') + (tileLit(U.w, t) ? ', lit' : ', dark')); }
+  renderMenu(); if (U.tab === 'pack') renderPanel();
+}
+window.addEventListener('pagehide', () => saveNow()); document.addEventListener('visibilitychange', () => { if (document.hidden) saveNow(); });
+window.addEventListener('keydown', e => {
+  if (!U.w || (e.target && e.target.tagName === 'INPUT')) return;
+  if (e.key === 'Escape') { if (!$('settings').hidden) { openSettings(false); return; } if (!$('game').hidden) { openPause(!U.paused); } return; }
+  if ($('game').hidden || U.cover || U.paused || U.w.over || me().pending) return;
+  if (e.key === '?') { U.tipsOpen = !U.tipsOpen; renderTips(); return; }
+  const map = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0], w: [0, -1], s: [0, 1], a: [-1, 0], d: [1, 0] };
+  const k = e.key.length === 1 ? e.key.toLowerCase() : e.key, p = me();
+  if (map[k]) { e.preventDefault(); const t = tileAt(U.w.map, p.x + map[k][0], p.y + map[k][1]); if (t && U.moveOpts.some(o => o.x === t.x && o.y === t.y && !o.locked)) doAct({ t: 'move', x: t.x, y: t.y, sneak: e.shiftKey }); }
+  else if (k === 'e') doAct({ t: 'end' }); else if (k === 'h') doAct({ t: 'hide' }); else if (k === 'f') doAct({ t: 'loot' });
+});
+
+// ---------- loop ----------
+const FXSND = { gunshot: 'shot', fighting: 'hit', alarm: 'alarm', brawl: 'hit', shouting: 'hit', snapping: 'click', scuffle: 'hit' };
+function frame(now) {
+  requestAnimationFrame(frame);
+  if (!U.w || $('game').hidden) return;
+  const w = U.w, p = me();
+  for (const f of w.fx) if (!U.fxSeen.has(f)) { U.fxSeen.add(f); if (f.round < w.round - 1) continue; const k = f.x + ',' + f.y, near = U.vis.has(k) || p.heard.some(h => h.x === f.x && h.y === f.y);
+    if (near) { U.rip.push({ x: f.x, y: f.y, r: f.r, t0: now }); if (FXSND[f.label]) AUDIO.sfx(FXSND[f.label]); } }
+  if (U.rip.length > 20) U.rip.splice(0, U.rip.length - 20);
+  if (U.follow && !drag) { U.cx += (p.x + 0.5 - U.cx) * 0.18; U.cy += (p.y + 0.5 - U.cy) * 0.18; }
+  const d = U.dpr || 1; ctx.setTransform(d, 0, 0, d, 0, 0);
+  if (U.cover) { ctx.clearRect(0, 0, U.W, U.H); return; }
+  drawGame(ctx, U, now);
+}
+renderSetup(); showScreen('menu'); requestAnimationFrame(frame);
+
+</script>

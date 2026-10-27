@@ -1,0 +1,225 @@
+<title>Three Strikes</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Display:wght@700;900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: full-screen tactical console. Map stage left/top, command panel right/bottom.
+   Palette: concrete blue-black, sodium amber for light and interaction, signal red for danger. */
+:root {
+  --bg: #0e1114; --panel: #151a1f; --panel2: #1d242b; --line: #2b343d; --fg: #d9dee3; --muted: #8693a0;
+  --amber: #f2b441; --alert: #e5484d; --ok: #5fb878; --steel: #6b86c9;
+  --display: "Big Shoulders Stencil Display", Impact, "Arial Narrow Bold", sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 var(--body);
+  padding-block: 0; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); box-sizing: border-box; overflow: hidden; }
+* { box-sizing: border-box; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.lbl { font: 600 10.5px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.muted { color: var(--muted); } .pad { padding: 12px 2px; }
+#app { height: 100%; position: relative; }
+[hidden] { display: none !important; }
+
+/* ---------- setup ---------- */
+#setup { height: 100%; overflow-y: auto; padding: 28px 0 40px; }
+.setup-inner { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+h1 { font: 900 clamp(48px, 13vw, 88px)/.88 var(--display); letter-spacing: .02em; margin: 4px 0 0; color: var(--fg); text-wrap: balance; }
+h1 span { color: var(--alert); }
+.tagline { margin: 0; color: var(--muted); max-width: 44ch; font-size: 15px; }
+.grp { display: flex; flex-direction: column; gap: 8px; }
+.segs { display: flex; gap: 6px; flex-wrap: wrap; }
+.seg { background: var(--panel); border: 1px solid var(--line); padding: 10px 18px; min-height: 44px; border-radius: 4px; font-weight: 600; }
+.seg.on { background: var(--amber); color: #15110a; border-color: var(--amber); }
+.name { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.name .dot { width: 14px; height: 14px; border-radius: 50%; flex: none; }
+input[type=text], input:not([type]), input[inputmode] { background: var(--panel); border: 1px solid var(--line); color: var(--fg); padding: 10px 12px; min-height: 44px; border-radius: 4px; font: 500 14px var(--mono); width: 100%; min-width: 0; }
+.seedrow { display: flex; gap: 8px; }
+.check { display: flex; gap: 10px; align-items: center; min-height: 36px; }
+.check input { width: 20px; height: 20px; accent-color: var(--amber); }
+.primary { background: var(--amber); color: #15110a; border: 0; border-radius: 4px; padding: 12px 18px; font: 700 15px var(--body); min-height: 48px; letter-spacing: .02em; }
+.primary:disabled { background: var(--panel2); color: var(--muted); cursor: default; }
+.primary.big { font-size: 17px; min-height: 54px; }
+.ghost { background: transparent; border: 1px solid var(--line); border-radius: 4px; padding: 10px 14px; min-height: 44px; color: var(--fg); }
+#how { background: var(--panel); border: 1px solid var(--line); padding: 16px; border-radius: 4px; font-size: 13.5px; }
+#how h3 { font: 700 13px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--amber); margin: 14px 0 4px; } #how h3:first-child { margin-top: 0; }
+#how p, #how ul { margin: 0 0 6px; } #how ul { padding-left: 18px; } #how li { margin-bottom: 3px; }
+
+/* ---------- game ---------- */
+#game { height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr) minmax(0, 46%); position: relative; gap: 0; }
+#hud-top { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.brand { font: 900 22px/1 var(--display); letter-spacing: .06em; margin-right: auto; }
+.brand b { color: var(--alert); font-weight: 900; }
+#round { font: 600 12px var(--mono); color: var(--muted); letter-spacing: .08em; text-transform: uppercase; }
+.chip { display: inline-flex; gap: 6px; align-items: baseline; padding: 4px 9px; border-radius: 3px; font: 600 12px var(--mono); background: var(--panel2); border: 1px solid var(--line); }
+.chip small { color: var(--muted); font-size: 10.5px; }
+.chip.day { color: var(--amber); } .chip.night { color: var(--steel); } .chip.dim { color: var(--muted); margin-left: 6px; }
+#alert { display: flex; align-items: center; gap: 5px; }
+.pip { width: 14px; height: 8px; background: var(--panel2); border: 1px solid var(--line); border-radius: 1px; } .pip.hot { background: var(--alert); border-color: var(--alert); }
+#stage { position: relative; min-height: 0; background: radial-gradient(ellipse at 50% 40%, #151b21 0%, #0b0e11 80%); overflow: hidden; touch-action: none; }
+#cv { display: block; touch-action: none; cursor: grab; }
+#zoom { position: absolute; right: 8px; top: 8px; display: flex; flex-direction: column; gap: 6px; }
+#zoom button { width: 40px; height: 40px; background: rgba(21,26,31,.9); border: 1px solid var(--line); border-radius: 4px; font: 700 18px var(--mono); }
+#toast { position: absolute; left: 50%; top: 10px; transform: translate(-50%, -8px); max-width: min(92%, 480px); padding: 9px 14px; border-radius: 4px; background: rgba(21,26,31,.96); border: 1px solid var(--line); font-size: 13.5px; opacity: 0; pointer-events: none; transition: opacity .18s, transform .18s; text-align: center; z-index: 5; }
+#toast.show { opacity: 1; transform: translate(-50%, 0); } #toast.bad { border-color: var(--alert); } #toast.ok { border-color: var(--amber); }
+#movemenu { position: absolute; width: 180px; background: rgba(21,26,31,.97); border: 1px solid var(--amber); border-radius: 4px; padding: 10px; z-index: 6; }
+#movemenu .mrow { display: flex; gap: 6px; margin-top: 8px; } #movemenu button { flex: 1; min-height: 44px; background: var(--panel2); border: 1px solid var(--line); border-radius: 4px; font-weight: 600; }
+#movemenu button:not(:disabled):hover { border-color: var(--amber); } #movemenu button:disabled { opacity: .4; } #movemenu small { display: block; color: var(--muted); font: 500 10.5px var(--mono); }
+#movemenu p { margin: 6px 0 0; font-size: 12.5px; }
+.tag { display: inline-block; font: 600 10.5px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; padding: 3px 6px; border-radius: 2px; background: var(--panel2); border: 1px solid var(--line); color: var(--muted); vertical-align: middle; }
+.tag.bad { color: var(--alert); border-color: rgba(229,72,77,.5); } .tag.good { color: var(--ok); border-color: rgba(95,184,120,.45); }
+
+#panel { display: flex; flex-direction: column; min-height: 0; background: var(--panel); border-top: 1px solid var(--line); margin: 0 calc(-1 * max(16px, env(safe-area-inset-right, 0px))) 0 calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+  padding: 0 max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); }
+#panel-body { flex: 1; min-height: 0; overflow-y: auto; padding: 10px 0; }
+#panel-foot { padding: 8px 0 10px; border-top: 1px solid var(--line); }
+#endturn { width: 100%; }
+.roster { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.rchip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border: 1px solid var(--line); border-radius: 3px; font: 600 12px var(--mono); color: var(--muted); }
+.rchip i { width: 9px; height: 9px; border-radius: 50%; background: var(--c); } .rchip.on { color: var(--fg); border-color: var(--c); } .rchip.out { opacity: .45; }
+.card { background: var(--panel2); border: 1px solid var(--line); border-radius: 4px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.cardhead { display: flex; justify-content: space-between; align-items: baseline; } .cardhead b { font: 900 22px/1 var(--display); letter-spacing: .05em; text-transform: uppercase; }
+.cigs { font: 600 14px var(--mono); } .cigs u { text-decoration: none; display: inline-grid; place-items: center; width: 18px; height: 18px; background: var(--amber); color: #15110a; border-radius: 50%; font-size: 11px; margin-right: 4px; }
+.stats { display: flex; gap: 18px; flex-wrap: wrap; } .stats > div { display: flex; align-items: center; gap: 6px; } .stats .lbl { margin-right: 2px; }
+.seg2 { width: 9px; height: 14px; background: #2a3138; border-radius: 1px; } .seg2.hp { background: var(--ok); }
+.ap { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--amber); } .ap.on { background: var(--amber); }
+.strike { width: 14px; height: 14px; transform: rotate(45deg); border: 2px solid #55303a; } .strike.on { background: var(--alert); border-color: var(--alert); }
+.where { font-size: 13px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.warn { margin-top: 8px; padding: 8px 10px; border: 1px solid var(--alert); background: rgba(229,72,77,.12); border-radius: 4px; font-weight: 600; font-size: 13px; }
+.warn.soft { border-color: var(--amber); background: rgba(242,180,65,.1); }
+.tabs { display: flex; gap: 4px; margin: 10px 0 8px; border-bottom: 1px solid var(--line); }
+.tab { background: none; border: 0; border-bottom: 2px solid transparent; padding: 8px 12px; min-height: 40px; color: var(--muted); font-weight: 600; } .tab.on { color: var(--fg); border-color: var(--amber); }
+.hint { margin: 0 0 8px; font-size: 12.5px; color: var(--muted); }
+.acts { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.act { position: relative; text-align: left; padding: 9px 44px 9px 10px; min-height: 46px; background: var(--panel2); border: 1px solid var(--line); border-radius: 4px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.act:not(.off):hover { border-color: var(--amber); } .act .al { font-weight: 600; font-size: 13.5px; overflow-wrap: anywhere; } .act small { color: var(--muted); font-size: 11.5px; overflow-wrap: anywhere; }
+.act .ap-b { position: absolute; right: 8px; top: 8px; font: 600 10.5px var(--mono); color: var(--amber); border: 1px solid rgba(242,180,65,.4); border-radius: 2px; padding: 2px 4px; }
+.act.off { opacity: .5; }
+.pack { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.item { display: inline-flex; align-items: center; gap: 7px; padding: 6px 9px; background: var(--panel2); border: 1px solid var(--line); border-radius: 3px; font-size: 13px; } .item b { font: 700 12px var(--mono); color: var(--amber); width: 16px; text-align: center; } .item em { font: 600 12px var(--mono); color: var(--muted); font-style: normal; }
+.seltile { margin-top: 8px; padding: 8px; border: 1px dashed var(--line); border-radius: 4px; }
+.log p { margin: 0 0 6px; font-size: 13px; } .log em { font: 600 10.5px var(--mono); color: var(--muted); font-style: normal; margin-right: 6px; }
+.l-alert { color: #f0a0a3; } .l-strike { color: var(--alert); font-weight: 600; } .l-escape { color: var(--ok); font-weight: 600; } .l-you { color: var(--fg); } .l-info { color: var(--muted); }
+
+#cover { position: absolute; inset: 0; background: #090b0d; display: grid; place-items: center; z-index: 8; }
+.coverbox { text-align: center; padding: 20px; display: flex; flex-direction: column; gap: 12px; align-items: center; }
+.coverbox h2 { font: 900 clamp(40px, 10vw, 72px)/1 var(--display); margin: 0; letter-spacing: .04em; text-transform: uppercase; }
+#modal { position: absolute; inset: 0; background: rgba(5,7,9,.72); display: flex; align-items: flex-end; justify-content: center; z-index: 9; }
+.msheet { width: min(560px, 100%); max-height: 86%; overflow-y: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 6px 6px 0 0; padding: 14px; display: flex; flex-direction: column; gap: 6px; }
+.mhead { display: flex; justify-content: space-between; align-items: baseline; } .mhead b { font: 900 22px var(--display); letter-spacing: .05em; text-transform: uppercase; }
+.msheet h4 { margin: 8px 0 2px; font: 600 10.5px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.row { display: flex; justify-content: space-between; gap: 12px; align-items: center; text-align: left; padding: 9px 10px; min-height: 44px; background: var(--panel2); border: 1px solid var(--line); border-radius: 4px; }
+.row small { display: block; color: var(--muted); font-size: 11.5px; } .row b { font: 600 13px var(--mono); color: var(--amber); white-space: nowrap; } .row:disabled { opacity: .45; } .row:not(:disabled):hover { border-color: var(--amber); }
+.row em { font: 600 12px var(--mono); color: var(--muted); font-style: normal; }
+.giverow { display: flex; gap: 6px; flex-wrap: wrap; } .giverow button { min-height: 40px; padding: 6px 10px; background: var(--panel2); border: 1px solid var(--line); border-radius: 4px; }
+#over { position: absolute; inset: 0; background: rgba(9,11,13,.94); display: grid; place-items: center; z-index: 20; padding: 16px; overflow-y: auto; }
+.overbox { max-width: 520px; width: 100%; display: flex; flex-direction: column; gap: 12px; }
+.overbox h2 { font: 900 clamp(40px, 10vw, 64px)/.95 var(--display); margin: 0; text-wrap: balance; } .overbox p { margin: 0; color: var(--muted); }
+.results div { display: flex; gap: 10px; align-items: baseline; padding: 8px 0; border-bottom: 1px solid var(--line); } .results span { font: 600 12px var(--mono); text-transform: uppercase; color: var(--muted); } .results small { margin-left: auto; color: var(--muted); }
+.btns { display: flex; gap: 8px; flex-wrap: wrap; } .btns .primary { flex: 1; min-width: 160px; } .btns button:not(.primary) { background: var(--panel2); border: 1px solid var(--line); border-radius: 4px; padding: 12px 18px; min-height: 48px; flex: 1; min-width: 120px; }
+
+@media (min-width: 900px) {
+  #game { grid-template-columns: minmax(0, 1fr) 380px; grid-template-rows: auto minmax(0, 1fr); column-gap: 0; }
+  #hud-top { grid-column: 1 / -1; }
+  #panel { grid-column: 2; grid-row: 2; margin: 0 calc(-1 * max(16px, env(safe-area-inset-right, 0px))) 0 0; border-top: 0; border-left: 1px solid var(--line); padding-left: 14px; }
+  #stage { grid-column: 1; grid-row: 2; }
+}
+@media (prefers-reduced-motion: reduce) { #toast { transition: none; } }
+
+.h2 { font: 900 clamp(34px, 8vw, 52px)/1 var(--display); letter-spacing: .04em; text-transform: uppercase; margin: 6px 0 0; }
+#menu, #setup { height: 100%; overflow-y: auto; padding: 28px 0 40px; }
+#menu .primary, #menu .ghost, #setup .ghost { width: 100%; }
+.hbtn { background: var(--panel2); border: 1px solid var(--line); border-radius: 4px; width: 38px; height: 34px; font: 700 16px var(--mono); }
+.hbtn.on { color: var(--alert); }
+.chip.warnchip { color: #15110a; background: var(--amber); border-color: var(--amber); animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .65; } }
+#notes { position: absolute; right: 8px; top: 8px; width: min(300px, calc(100% - 64px)); display: flex; flex-direction: column; gap: 6px; z-index: 5; pointer-events: none; }
+.note { pointer-events: auto; background: rgba(21,26,31,.97); border: 1px solid var(--line); border-left: 4px solid var(--amber); border-radius: 4px; padding: 8px 10px; font-size: 13px; animation: slidein .25s ease-out; }
+.note.bad { border-left-color: var(--alert); } .note.good { border-left-color: var(--ok); } .note small { display: block; color: var(--muted); font: 500 10.5px var(--mono); margin-top: 3px; }
+@keyframes slidein { from { transform: translateX(20px); opacity: 0; } }
+#tipbtn { position: absolute; left: 8px; bottom: 8px; width: 40px; height: 40px; border-radius: 50%; background: var(--amber); color: #15110a; border: 0; font: 900 20px var(--display); z-index: 6; box-shadow: 0 0 0 0 rgba(242,180,65,.6); animation: ring 2.4s infinite; }
+@keyframes ring { 70% { box-shadow: 0 0 0 10px rgba(242,180,65,0); } 100% { box-shadow: 0 0 0 0 rgba(242,180,65,0); } }
+#tips { position: absolute; left: 8px; bottom: 56px; width: min(360px, calc(100% - 16px)); max-height: 70%; overflow-y: auto; background: rgba(21,26,31,.98); border: 1px solid var(--amber); border-radius: 6px; padding: 12px 14px; z-index: 6; }
+#tips h4 { margin: 0 0 8px; font: 600 10.5px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--amber); } #tips li { margin-bottom: 7px; font-size: 13px; } #tips ul { margin: 0; padding-left: 18px; }
+#pause, #settings { position: absolute; inset: 0; background: rgba(5,7,9,.86); display: grid; place-items: center; z-index: 30; padding: 16px; overflow-y: auto; }
+#settings { z-index: 40; }
+.pbox { width: min(420px, 100%); display: flex; flex-direction: column; gap: 10px; } .pbox button { width: 100%; }
+.phow { background: var(--panel); border: 1px solid var(--line); padding: 14px; border-radius: 4px; font-size: 13px; } .phow h3 { font: 700 12px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--amber); margin: 12px 0 4px; } .phow h3:first-child { margin-top: 0; } .phow p, .phow ul { margin: 0 0 6px; } .phow ul { padding-left: 18px; }
+.slider { display: flex; flex-direction: column; gap: 6px; } .slider input { width: 100%; accent-color: var(--amber); min-height: 32px; }
+.mark { display: inline-block; font: 800 13px var(--mono); padding: 1px 6px; border-radius: 3px; } .mark.sus { background: var(--amber); color: #15110a; } .mark.dan { background: var(--alert); color: #fff; }
+.hl { border-color: var(--amber) !important; } .tag.you { color: #15110a; background: var(--amber); border-color: var(--amber); }
+.opts { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 6px; } .opts button { min-height: 44px; padding: 8px; background: var(--panel2); border: 1px solid var(--line); border-radius: 4px; font-weight: 600; text-align: left; }
+.opts button small { display: block; color: var(--muted); font: 500 10.5px var(--mono); } .opts button.on { border-color: var(--amber); } .opts button:disabled { opacity: .4; }
+.opts button:not(:disabled):hover { border-color: var(--amber); }
+.meth { font: 600 11px var(--mono); padding: 3px 7px; border-radius: 3px; background: rgba(120,200,255,.15); color: #7cf; } .meth.crash { background: rgba(200,120,120,.18); color: #e99; }
+</style>
+<main id="app">
+  <section id="menu">
+    <div class="setup-inner">
+      <p class="lbl" style="margin:0">Turn-based prison break for 1 to 4 prisoners</p>
+      <h1>THREE <span>STRIKES</span></h1>
+      <p class="tagline">Sneak, lockpick, bribe and hack your way out before the guards catch you three times. Every prison is built fresh from a seed.</p>
+      <button id="m-new" class="primary big">New game</button>
+      <button id="m-resume" class="ghost" hidden>Resume game</button>
+      <button id="m-how" class="ghost">How to play</button>
+      <button id="m-set" class="ghost">Sound settings</button>
+      <div id="how" hidden>
+        <h3>Turns</h3><p>Each prisoner has 2 action points (AP). When everyone is done, guards and inmates move. Hot-seat: pass the device when asked.</p>
+        <h3>Days and nights</h3><p>The week repeats: Morning, Day, Evening, Night. Guard patrol routes are the same every Monday morning, every Tuesday night and so on. The Informant sells them (expensive). At night everyone must be in their own cell. Sleep in your cell to skip the night.</p>
+        <h3>Suspicious or dangerous?</h3><ul><li><b>Yellow ?</b> Suspicious: looting, running, dealing contraband, bribing, being in a restricted room. If caught, the guard searches you and takes contraband. No strike.</li><li><b>Red !</b> Dangerous: out of your cell at night, staying in a restricted room, fighting, attacking guards, being betrayed by an inmate. Caught means a strike.</li><li>When a guard stops you, you get to react: cooperate, bribe, attack or run.</li></ul>
+        <h3>Strikes</h3><p>Strike 1: beaten, contraband and your cell stash confiscated, back to your cell. Strike 2: solitary. Strike 3: transferred, you are out. Cigarettes are never confiscated.</p>
+        <h3>Reading the map</h3><ul><li><b>Red eye</b> on a guard and a red line to you: he sees you right now. Red tint = the tiles he sees while he sees you.</li><li><b>Grey slashed eye</b>: a guard in view who does not see you. Blue tint = the tiles he can see. Walls block sight completely.</li></ul>
+        <h3>Difficulty</h3><p>Easy: fewer guards, the whole map known from the start, and being out of your cell at night is no strike (guards still hunt you). Medium: standard. Hard: more guards. Progress saves automatically.</p>
+        <h3>Hiding</h3><p>In corridors and yards, guards within 2 tiles may spot you. In rooms like the kitchen only a guard on your tile might. In small closed rooms, only the same tile again with a lower chance. Dark helps.</p>
+        <h3>Gear</h3><ul><li>Salvage scrap, craft lockpicks, shivs, dummies, jammers and wirecutters.</li><li>Lockpicking most rooms trips the alarm. Use a jammer or bribe a guard to switch alarms off for a time of day.</li><li>Put a dummy in your bed so empty beds do not trigger a hunt.</li><li>Meth: 3 AP for 7 turns, then 1 AP for 15 turns.</li><li>Your cell has a stash. Nobody else can open it.</li></ul>
+        <h3>Inmates</h3><p>They follow routines, trade, and can be hired to start a brawl in a place and time you choose. Do not steal from someone's cell while he is in it. If they see you do violence they may demand money or betray you.</p>
+        <h3>Getting out</h3><ul><li>Fence: wirecutters, 2 AP, loud.</li><li>Main gate: a keycard, with no guard watching.</li><li>Hack the control room to blind cameras or cut the power in the electrical room.</li></ul>
+        <h3>Keys</h3><p>Arrows or WASD move, Shift sneaks, E ends turn, H hides, F loots, Esc pauses, ? tips. Drag to pan, wheel or pinch to zoom.</p>
+      </div>
+    </div>
+  </section>
+  <section id="setup" hidden>
+    <div class="setup-inner">
+      <h2 class="h2">New game</h2>
+      <div class="grp"><span class="lbl">Prisoners</span><div id="seg-n" class="segs"></div><div id="names"></div></div>
+      <div class="grp"><span class="lbl">Mode</span><div id="seg-mode" class="segs"></div><p id="mode-hint" class="muted" style="margin:0;font-size:13px"></p></div>
+      <div class="grp"><span class="lbl">Difficulty</span><div id="seg-diff" class="segs"></div><p id="diff-hint" class="muted" style="margin:0;font-size:13px"></p></div>
+      <div class="grp" id="shared-row"><label class="check"><input type="checkbox" id="shared"> Shared vision between teammates</label></div>
+      <div class="grp"><label class="lbl" for="seed">Prison seed</label><div class="seedrow"><input id="seed" inputmode="numeric" aria-label="Prison seed"><button id="reseed" class="ghost">Random</button></div></div>
+      <button id="start" class="primary big">Start the break</button>
+      <button id="s-back" class="ghost">Back</button>
+    </div>
+  </section>
+
+  <section id="game" hidden>
+    <header id="hud-top">
+      <div class="brand">THREE <b>STRIKES</b></div>
+      <div id="phase"></div><div id="alert"></div><div id="round"></div><button id="mutebtn" class="hbtn" aria-label="Mute">&#9835;</button><button id="pausebtn" class="hbtn" aria-label="Pause menu">&#9776;</button>
+    </header>
+    <div id="stage">
+      <canvas id="cv" aria-label="Prison map"></canvas>
+      <div id="zoom"><button id="zin" aria-label="Zoom in">+</button><button id="zout" aria-label="Zoom out">&minus;</button><button id="zhome" aria-label="Center on me">&#9678;</button></div>
+      <div id="toast" role="status"></div><div id="notes" aria-live="polite"></div><button id="tipbtn" aria-label="Tips">?</button><div id="tips" hidden></div>
+      <div id="movemenu" hidden></div>
+      <div id="cover" hidden></div>
+    </div>
+    <aside id="panel">
+      <div id="panel-body"></div>
+      <div id="panel-foot"><button id="endturn" class="primary">End turn</button></div>
+    </aside>
+    <div id="modal" hidden></div>
+  </section>
+  <section id="over" hidden></section>
+  <section id="pause" hidden><div class="pbox"><h2 class="h2">Paused</h2><button id="p-resume" class="primary big">Resume</button><p id="p-savemsg" class="muted" style="margin:0;font-size:12.5px"></p><button id="p-set" class="ghost">Sound settings</button><button id="p-how" class="ghost">How to play</button><button id="p-restart" class="ghost">Restart this prison</button><button id="p-quit" class="ghost">Main menu</button><div id="p-howbox" class="phow" hidden></div></div></section>
+  <section id="settings" hidden><div class="pbox"><h2 class="h2">Sound</h2>
+    <label class="check"><input type="checkbox" id="a-mute"> Mute everything</label>
+    <label class="slider"><span class="lbl">Music</span><input type="range" id="a-music" min="0" max="100"></label>
+    <label class="slider"><span class="lbl">Effects</span><input type="range" id="a-sfx" min="0" max="100"></label>
+    <button id="a-close" class="primary">Done</button></div></section>
+</main>
+<script>
+/*__JS__*/
+</script>
