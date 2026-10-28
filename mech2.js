@@ -34,12 +34,18 @@ console.log(fails?('FAILS '+fails):'ALL OK');
 { const w=mk(),p=w.players[0]; p.items.meth=1; p.ap=2; const r=G.act(w,0,{t:'use',item:'meth'}); ok(r.ok&&p.ap===2||p.ap>=2,'meth used, ap='+p.ap+' (1 used for action)'); }
 console.log(fails?('FAILS '+fails):'ALL OK');
 // LOS: no sight through walls, in any seed
-{ const vm2=require('vm'); vm2.runInThisContext('globalThis.CL=clearLine;globalThis.SD=sightDist;globalThis.VS=visibleSet;globalThis.LK=linked;globalThis.TT=tileAt;');
+{ const vm2=require('vm'); vm2.runInThisContext('globalThis.CL=lineClear;globalThis.VP=visionPoly;globalThis.LIT=LIT_R;globalThis.SD=sightDist;globalThis.VS=visibleSet;globalThis.LK=linked;globalThis.TT=tileAt;');
   let bad=0,chk=0; for(const seed of [1,2,3,4,5,6,7,8]){ const w=G.newWorld({seed,players:2,mode:'coop'}); const m=w.map;
     for(const a of m.grid) if(a) for(const b of m.grid) if(b&&a!==b&&Math.abs(a.x-b.x)+Math.abs(a.y-b.y)<=3&&G.kindOf(a)!=='exit'&&G.kindOf(b)!=='exit'){ const adj=Math.abs(a.x-b.x)+Math.abs(a.y-b.y)===1; if(adj&&!LK(m,a,b)){ chk++; if(CL(w,a,b)) bad++; } } }
   ok(bad===0,'adjacent tiles separated by a wall never see each other ('+chk+' pairs)');
   const w=G.newWorld({seed:3,players:1,mode:'coop'}); const g=w.guards[2]; const p=w.players[0]; const room=G.cellOf(w,p); const t=room.tiles[0]; p.x=t.x;p.y=t.y;
   let leak=0; for(const d of w.map.grid) if(d&&G.kindOf(d)==='corr'&&Math.abs(d.x-t.x)+Math.abs(d.y-t.y)<=2){ g.x=d.x;g.y=d.y; const dd=SD(w,g,t); const nbOK=G.neighbors(w.map,d).includes(t); if(!nbOK&&dd!==Infinity&&Math.abs(d.x-t.x)+Math.abs(d.y-t.y)===1) leak++; } ok(leak===0,'guard in corridor cannot see into cell through wall'); }
+// geometric vision: the drawn polygon agrees with the rules
+{ function pip(pts,x,y){ let c=false; for(let i=0,j=pts.length-1;i<pts.length;j=i++){ const [xi,yi]=pts[i],[xj,yj]=pts[j]; if(((yi>y)!==(yj>y))&&(x<(xj-xi)*(y-yi)/(yj-yi)+xi)) c=!c; } return c; }
+  let bad=0,miss=0,chk=0; for(const seed of [2,5,9]){ const w=G.newWorld({seed,players:1,mode:'coop'}); const m=w.map;
+    for(const g of m.grid) if(g&&G.kindOf(g)!=='exit'&&!(g.room&&g.room.locked)){ const poly=VP(w,g,LIT());
+      for(const t of m.grid) if(t&&G.kindOf(t)!=='exit'&&!(t.room&&t.room.locked)&&Math.hypot(t.x-g.x,t.y-g.y)<=LIT()-0.05&&(t.x!==g.x||t.y!==g.y)){ chk++; const inside=pip(poly,t.x+0.5,t.y+0.5), clear=CL(w,g,t); if(inside&&!clear) bad++; if(clear&&!inside) miss++; } } }
+  ok(bad===0,'tile centre inside the drawn polygon is never blocked by the rules ('+chk+' checks, bad '+bad+')'); ok(miss===0,'every tile the rules allow lies inside the polygon (miss '+miss+')'); }
 // restock
 { const w=mk(); const r=w.map.rooms.find(r=>r.type==='common'); r.spots=0; w.round=1+36; w.phase='guards'; w.gStage=null; const before=w.log.length; w.round=36; G.runGuardPhase&&0; }
 console.log(fails?('FAILS '+fails):'ALL OK');

@@ -87,29 +87,70 @@ function reach(w, from, maxD, blockLocked) {
   return dist;
 }
 function pathDist(w, a, b, maxD) { const d = reach(w, a, maxD, false).get(tkey(b)); return d === undefined ? Infinity : d; }
-// true line of sight: the straight line between tile centres may not cross a wall (every step must be linked)
-function clearLine(w, a, b) {
-  if (a === b) return true;
-  const dx = b.x - a.x, dy = b.y - a.y, N = Math.max(Math.abs(dx), Math.abs(dy)) * 6, seq = [a];
-  for (let i = 1; i <= N; i++) {
-    const x = Math.floor(a.x + 0.5 + dx * i / N + 1e-6 * Math.sign(dx)), y = Math.floor(a.y + 0.5 + dy * i / N + 1e-6 * Math.sign(dy));
-    const t = tileAt(w.map, x, y); if (!t) return false; if (t !== seq[seq.length - 1]) seq.push(t);
+// ===== true geometric vision =====
+// Walls are line segments on the tile edges. A viewer sees a point only if the straight line from his eye (tile centre)
+// to that point crosses no wall. Locked doors count as walls (you still see the locked door tile itself).
+function wallSegs(w) {
+  const m = w.map, sig = m.rooms.map(r => (r.locked ? 1 : 0)).join('');
+  if (m._segSig === sig && m._segs) return m._segs;
+  const segs = [];
+  for (const t of m.grid) {
+    if (!t || kindOf(t) === 'exit') continue;
+    for (const [dx, dy] of DIRS) {
+      const n = tileAt(m, t.x + dx, t.y + dy);
+      if (n && kindOf(n) === 'exit') continue;
+      if (n && (dx < 0 || dy < 0)) continue; // shared edges are added once, from the +x / +y side
+      let a, b;
+      if (dx === 1) { a = [t.x + 1, t.y]; b = [t.x + 1, t.y + 1]; } else if (dy === 1) { a = [t.x, t.y + 1]; b = [t.x + 1, t.y + 1]; } else if (dx === -1) { a = [t.x, t.y]; b = [t.x, t.y + 1]; } else { a = [t.x, t.y]; b = [t.x + 1, t.y]; }
+      if (!n || !linked(m, t, n)) { segs.push({ x1: a[0], y1: a[1], x2: b[0], y2: b[1], hard: true }); continue; }
+      const lt = t.room && t.room.locked && t.room !== n.room ? t : (n.room && n.room.locked && n.room !== t.room ? n : null);
+      if (lt) segs.push({ x1: a[0], y1: a[1], x2: b[0], y2: b[1], hard: false, rt: lt, room: lt.room });
+    }
   }
-  for (let i = 1; i < seq.length; i++) {
-    const p = seq[i - 1], q = seq[i], sx = q.x - p.x, sy = q.y - p.y;
-    if (q.room && q.room.locked && q.room !== a.room && q !== b) return false;
-    if (sx && sy) { // diagonal step: both corner routes must be open
-      const c1 = tileAt(w.map, p.x + sx, p.y), c2 = tileAt(w.map, p.x, p.y + sy);
-      if (!(c1 && c2 && linked(w.map, p, c1) && linked(w.map, c1, q) && linked(w.map, p, c2) && linked(w.map, c2, q))) return false;
-    } else if (!linked(w.map, p, q)) return false;
+  m._segSig = sig; m._segs = segs; return segs;
+}
+function segHit(ox, oy, ex, ey, s) { // distance fraction along o->e where it meets the segment, or Infinity
+  const rx = ex - ox, ry = ey - oy, sx = s.x2 - s.x1, sy = s.y2 - s.y1, den = rx * sy - ry * sx;
+  if (Math.abs(den) < 1e-12) return Infinity; // parallel
+  const qx = s.x1 - ox, qy = s.y1 - oy, t = (qx * sy - qy * sx) / den, u = (qx * ry - qy * rx) / den, eps = 1e-9;
+  return (t >= -eps && t <= 1 + eps && u >= -eps && u <= 1 + eps) ? t : Infinity;
+}
+// can a viewer standing on tile `from` see the middle of tile `to`?
+function lineClear(w, from, to) {
+  if (from === to) return true;
+  const ox = from.x + 0.5, oy = from.y + 0.5, ex = to.x + 0.5, ey = to.y + 0.5;
+  const minx = Math.min(ox, ex) - 1e-6, maxx = Math.max(ox, ex) + 1e-6, miny = Math.min(oy, ey) - 1e-6, maxy = Math.max(oy, ey) + 1e-6;
+  for (const s of wallSegs(w)) {
+    if (Math.max(s.x1, s.x2) < minx || Math.min(s.x1, s.x2) > maxx || Math.max(s.y1, s.y2) < miny || Math.min(s.y1, s.y2) > maxy) continue;
+    if (!s.hard && (s.rt === to || (from.room && from.room === s.room))) continue;
+    if (segHit(ox, oy, ex, ey, s) !== Infinity) return false;
   }
   return true;
 }
+const LIT_R = () => CFG.VISION_LIT + 0.4, DARK_R = r => r + 0.45;
+function seeRange(w, tile, darkR) { return tileLit(w, tile) ? LIT_R() : DARK_R(darkR); }
+// polygon of everything visible from a tile within radius R (tile coordinates), by casting rays at every wall corner
+function visionPoly(w, from, R) {
+  const ox = from.x + 0.5, oy = from.y + 0.5;
+  const segs = wallSegs(w).filter(s => !(!s.hard && from.room && from.room === s.room) && Math.abs((s.x1 + s.x2) / 2 - ox) <= R + 1 && Math.abs((s.y1 + s.y2) / 2 - oy) <= R + 1);
+  const angs = [];
+  for (const s of segs) for (const [px, py] of [[s.x1, s.y1], [s.x2, s.y2]]) { const a = Math.atan2(py - oy, px - ox); angs.push(a - 1e-4, a, a + 1e-4); }
+  for (let i = 0; i < 72; i++) angs.push(-Math.PI + i * Math.PI / 36);
+  angs.sort((a, b) => a - b);
+  const pts = [];
+  for (const a of angs) {
+    const dx = Math.cos(a), dy = Math.sin(a); let best = R;
+    for (const s of segs) { const t = segHit(ox, oy, ox + dx * R, oy + dy * R, s); if (t !== Infinity && t * R < best) best = t * R; }
+    pts.push([ox + dx * best, oy + dy * best]);
+  }
+  return pts;
+}
+
 function visibleSet(w, p) {
-  const src = ptile(w, p), set = new Set();
-  for (const [k, d] of reach(w, src, CFG.VISION_LIT, true)) {
-    const [x, y] = k.split(',').map(Number), t = tileAt(w.map, x, y);
-    if (d <= (tileLit(w, t) ? CFG.VISION_LIT : darkRange(w, p)) && clearLine(w, src, t)) set.add(k);
+  const src = ptile(w, p), set = new Set(), dr = darkRange(w, p), maxR = Math.ceil(LIT_R());
+  for (let y = src.y - maxR; y <= src.y + maxR; y++) for (let x = src.x - maxR; x <= src.x + maxR; x++) {
+    const t = tileAt(w.map, x, y); if (!t || kindOf(t) === 'exit') continue;
+    if (Math.hypot(x - src.x, y - src.y) <= seeRange(w, t, dr) && lineClear(w, src, t)) set.add(tkey(t));
   }
   for (const k of [...set]) { const [x, y] = k.split(',').map(Number); const t = tileAt(w.map, x, y); if (kindOf(t) === 'yard') for (const e of exitsNear(w.map, t)) set.add(tkey(e)); }
   return set;
@@ -120,11 +161,12 @@ function teamVisible(w, p) {
   if (w.shared) for (const q of w.players) if (q.id !== p.id && (q.status === 'free' || q.status === 'solitary')) for (const k of visibleSet(w, q)) s.add(k);
   return s;
 }
-// path distance from guard to the prisoner if the prisoner is inside the guard's sight range, else Infinity
+// manhattan distance from guard to the tile if the guard can really see it (clear line, in range), else Infinity
 function sightDist(w, g, tile) {
-  const d = reach(w, unitTile(w, g), CFG.VISION_LIT, true).get(tkey(tile));
-  if (d === undefined || !clearLine(w, unitTile(w, g), tile)) return Infinity;
-  return d <= (tileLit(w, tile) ? CFG.VISION_LIT : CFG.VISION_DARK) ? d : Infinity;
+  const gt = unitTile(w, g); if (!gt || !tile) return Infinity;
+  if (gt === tile) return 0;
+  if (Math.hypot(tile.x - gt.x, tile.y - gt.y) > seeRange(w, tile, CFG.VISION_DARK) || !lineClear(w, gt, tile)) return Infinity;
+  return Math.abs(tile.x - gt.x) + Math.abs(tile.y - gt.y);
 }
 // hiding: open ground is checked within 2 tiles by day and only on the same tile at night; rooms and mid terrain only on the same tile
 function hideFind(w, p, d) {

@@ -124,13 +124,28 @@ function drawGame(ctx, U, now) {
       else { ctx.fillStyle = 'rgba(6,10,28,0.55)'; ctx.fillRect(x, y, TS, TS); }
     } else { ctx.fillStyle = 'rgba(10,14,22,0.62)'; ctx.fillRect(x, y, TS, TS); }
   }
-  // ---- guard line of sight ----
-  if (U.los && w.phase === 'players') {
-    for (const [k, lvl] of U.los) {
-      const [qx, qy] = k.split(',').map(Number), t = tileAt(map, qx, qy); if (!t || !isVisT(t) || !onScreen(t)) continue;
-      const x = sx(t.x), y = sy(t.y), red = lvl >= 2; ctx.fillStyle = red ? 'rgba(229,72,77,0.3)' : 'rgba(80,120,230,0.2)'; ctx.fillRect(x, y, TS, TS);
-      ctx.save(); ctx.beginPath(); ctx.rect(x, y, TS, TS); ctx.clip(); ctx.strokeStyle = red ? 'rgba(229,72,77,0.38)' : 'rgba(80,120,230,0.3)'; ctx.lineWidth = 1;
-      for (let i = -TS; i < TS; i += TS * 0.22) { ctx.beginPath(); ctx.moveTo(x + i, y + TS); ctx.lineTo(x + i + TS, y); ctx.stroke(); } ctx.restore();
+  // ---- guard line of sight: the exact area each guard can see, cut by walls (not by tiles) ----
+  if (U.vpolys && w.phase === 'players') {
+    const cv = drawGame.cv || (drawGame.cv = document.createElement('canvas'));
+    if (cv.width !== ctx.canvas.width || cv.height !== ctx.canvas.height) { cv.width = ctx.canvas.width; cv.height = ctx.canvas.height; }
+    const c2 = cv.getContext('2d'), kx = ctx.canvas.width / (ctx.canvas.clientWidth || ctx.canvas.width), ky = ctx.canvas.height / (ctx.canvas.clientHeight || ctx.canvas.height);
+    for (const vp of U.vpolys) {
+      c2.setTransform(1, 0, 0, 1, 0, 0); c2.clearRect(0, 0, cv.width, cv.height); c2.setTransform(kx, 0, 0, ky, 0, 0);
+      c2.globalCompositeOperation = 'source-over'; c2.beginPath();
+      vp.pts.forEach(([px, py], i) => { const X = sx(px), Y = sy(py); if (i) c2.lineTo(X, Y); else c2.moveTo(X, Y); }); c2.closePath();
+      const col = vp.red ? '229,72,77' : '60,110,255';
+      c2.fillStyle = 'rgba(' + col + ',' + (vp.red ? 0.45 : 0.38) + ')'; c2.fill();
+      c2.lineWidth = 3; c2.strokeStyle = 'rgba(' + col + ',0.85)'; c2.stroke();
+      // keep only tiles you can see and that are within the guard's range (lit rooms 5.4, dark ones about 1.5)
+      const mk = drawGame.mk || (drawGame.mk = document.createElement('canvas'));
+      if (mk.width !== cv.width || mk.height !== cv.height) { mk.width = cv.width; mk.height = cv.height; }
+      const m2 = mk.getContext('2d'); m2.setTransform(1, 0, 0, 1, 0, 0); m2.clearRect(0, 0, mk.width, mk.height); m2.setTransform(kx, 0, 0, ky, 0, 0); m2.fillStyle = '#000';
+      for (const t of map.grid) {
+        if (!t || !onScreen(t) || !isVisT(t)) continue;
+        if (Math.hypot(t.x - vp.gx, t.y - vp.gy) <= (tileLit(w, t) ? LIT_R() : DARK_R(CFG.VISION_DARK))) m2.fillRect(sx(t.x) - 0.5, sy(t.y) - 0.5, TS + 1, TS + 1);
+      }
+      c2.setTransform(1, 0, 0, 1, 0, 0); c2.globalCompositeOperation = 'destination-in'; c2.drawImage(mk, 0, 0);
+      ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(cv, 0, 0); ctx.restore();
     }
   }
   // ---- your cell glow ----

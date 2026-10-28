@@ -5,7 +5,7 @@ const U = { w: null, viewer: 0, zoom: 64, cx: 8, cy: 5.5, W: 300, H: 300, vis: n
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const setup = { n: 2, mode: 'coop', shared: true, diff: 'medium', seed: Math.floor(Math.random() * 1e6) };
 // ---------- saving: the engine is deterministic, so a save is the setup plus the list of actions taken ----------
-const SAVE_KEY = 'ts_save', SAVE_V = 4;
+const SAVE_KEY = 'ts_save', SAVE_V = 5;
 function A(a) { const pid = U.viewer, r = act(U.w, pid, a); U.alog.push([pid, a]); saveSoon(); return r; } // failed actions can still change state (rng, hidden), so every call is logged
 let saveT = 0;
 function saveSoon() { clearTimeout(saveT); saveT = setTimeout(saveNow, 150); }
@@ -59,12 +59,12 @@ function refresh(center) {
   U.vis = teamVisible(w, p); U.mem = new Set(p.memory); if (w.shared) for (const q of w.players) for (const k of q.memory) U.mem.add(k);
   const turn = w.phase === 'players' && w.cur === U.viewer && p.status === 'free' && !p.pending;
   U.moveOpts = turn ? moveOptions(w, p) : []; U.runOpts = turn && p.ap >= 2 ? runOptions(w, p) : [];
-  // what guards in view can see (line of sight)
-  U.los = new Map();
+  // what guards in view can really see: a polygon cast from the guard's eye, stopped by every wall
+  U.vpolys = [];
   for (const g of w.guards) {
     if (g.ko > 0 || g.dead || g.off || !U.vis.has(g.x + ',' + g.y)) continue;
-    const sees = p.spotted && p.spotted.some(s => s.gid === g.id), gt = unitTile(w, g), range = tileLit(w, gt) ? CFG.VISION_LIT : CFG.VISION_LIT;
-    for (const [k] of reach(w, gt, range, true)) { const [x, y] = k.split(',').map(Number), t = tileAt(w.map, x, y); if (!t) continue; if (sightDist(w, g, t) !== Infinity) U.los.set(k, Math.max(U.los.get(k) || 0, sees ? 2 : 1)); }
+    const sees = !!(p.spotted && p.spotted.some(s => s.gid === g.id)), gt = unitTile(w, g);
+    U.vpolys.push({ gid: g.id, gx: gt.x, gy: gt.y, red: sees, pts: visionPoly(w, gt, LIT_R()) });
   }
   U.routes = [];
   for (const slot of U.routeView) if (p.routeIntel.has(slot)) for (const g of w.guards) if (!g.post) U.routes.push({ name: g.name, pts: guardRouteTiles(w, g, slot) });
